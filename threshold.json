@@ -1,0 +1,122 @@
+{
+  "physicalConditionPanel": {
+    "top": {
+      "No Defect in Panel": [0, 40],
+      "Cracked or Broken Panel": [40, 80],
+      "Missing Panel": [80, 100]
+    },
+    "bottom": {
+      "No Defect in Panel": [0, 40],
+      "Cracked or Broken Panel": [40, 80],
+      "Missing Panel": [80, 100]
+    },
+    "left": {
+      "No Defect in Panel": [0, 60],
+      "Cracked or Broken Panel": [60,80],
+      "Missing Panel": [80, 100]
+    },
+    "right": {
+      "No Defect in Panel": [0, 60],
+      "Cracked or Broken Panel": [60,80],
+      "Missing Panel": [80, 100]
+    },
+    "back": {
+      "No Defect in Panel": [0, 20],
+      "Cracked or Broken Panel": [20, 90],
+      "Missing Panel": [90, 100]
+    }
+  },
+  "physicalConditionScratch": {
+    "back": {
+      "No Scratches": [0, 10],
+      "Normal sign of usage": [10, 30],
+      "Minor Scratch": [30, 40],
+      "Major Scratch": [40, 70],
+      "Minor paint peel-off/Bubble": [70, 80],
+      "Major paint peel-off/Bubble": [80, 100]
+    },
+    "left": {
+      "No Scratches": [0, 40],
+      "Normal sign of usage": [40, 60],
+      "Minor Scratch": [60, 80],
+      "Major Scratch": [80, 90],
+      "Minor paint peel-off/Bubble": [90, 95],
+      "Major paint peel-off/Bubble": [95, 100]
+    },
+    "right": {
+      "No Scratches": [0, 40],
+      "Normal sign of usage": [40, 60],
+      "Minor Scratch": [60, 80],
+      "Major Scratch": [80, 90],
+      "Minor paint peel-off/Bubble": [90, 95],
+      "Major paint peel-off/Bubble": [95, 100]
+    },
+    "top": {
+      "No Scratches": [0, 10],
+      "Normal sign of usage": [10, 35],
+      "Minor Scratch": [35, 60],
+      "Major Scratch": [60, 85],
+      "Minor paint peel-off/Bubble": [85, 92],
+      "Major paint peel-off/Bubble": [92, 100]
+    },
+    "bottom": {
+      "No Scratches": [0, 10],
+      "Normal sign of usage": [10, 35],
+      "Minor Scratch": [35, 65],
+      "Major Scratch": [65, 85],
+      "Minor paint peel-off/Bubble": [85, 92],
+      "Major paint peel-off/Bubble": [92, 100]
+    }
+  },
+  "physicalConditionDent": {
+    "top": {
+      "No Defect in Panel": [0, 10],
+      "Minor Dent": [10, 50],
+      "Major Dent": [50, 100]
+    },
+    "bottom": {
+      "No Defect in Panel": [0, 10],
+      "Minor Dent": [10, 50],
+      "Major Dent": [50, 100]
+    },
+    "left": {
+      "No Defect in Panel": [0, 10],
+      "Minor Dent": [10, 50],
+      "Major Dent": [50, 100]
+    },
+    "right": {
+      "No Defect in Panel": [0, 10],
+      "Minor Dent": [10, 50],
+      "Major Dent": [50, 100]
+    }
+  },
+  "screenPhysicalCondition": {
+    "front": {
+      "No Defect in Panel": [0, 10],
+      "Screen Crack": [10, 60],
+      "Broken Screen": [60, 100]
+    }
+  },
+  "default": {
+    "top": {
+      "No Defect in Panel": [0, 10],
+      "Defect": [10, 100]
+    },
+    "bottom": {
+      "No Defect in Panel": [0, 10],
+      "Defect": [10, 100]
+    },
+    "left": {
+      "No Defect in Panel": [0, 10],
+      "Defect": [10, 100]
+    },
+    "right": {
+      "No Defect in Panel": [0, 10],
+      "Defect": [10, 100]
+    },
+    "back": {
+      "No Defect in Panel": [0, 10],
+      "Defect": [10, 100]
+    }
+  }
+}

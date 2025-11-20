@@ -1,0 +1,376 @@
+================================================================================
+                    ANALYSIS DASHBOARD - USAGE GUIDE
+================================================================================
+
+QUICK START
+-----------
+1. Start the dashboard: python app.py
+2. Open browser: http://localhost:8050
+3. Navigate to "📊 Report Generation" tab
+4. Upload raw data CSV and generate report
+5. Explore other tabs with the loaded data
+
+TAB OVERVIEW
+------------
+1. 📊 Report Generation - Generate analysis CSV from raw data
+2. 📈 Analytics - View performance metrics and trends
+3. 📊 Confusion Matrices - View model performance matrices
+4. 📷 Image Viewer - Browse and filter records with images
+5. 🔍 Cell Details - View filtered records from matrix cells
+6. 🎛️ Threshold Tweaker - Adjust thresholds and optimize
+
+================================================================================
+                    📊 REPORT GENERATION TAB
+================================================================================
+
+PURPOSE
+-------
+Generate analysis CSV files from raw data using Redash API queries.
+Supports batching for datasets with more than 3000 records.
+
+STEP-BY-STEP GUIDE
+------------------
+
+1. CONFIGURE QUESTION SETTINGS
+   - Question Name: Select from dropdown (e.g., physicalConditionScratch)
+   - Output Folder Name: Enter folder name (default: analysis_YYYY_MM_DD)
+   - Back Key: Image key for back side (default: backmerged)
+   - Front Key: Image key for front side (default: whiterotatedmerged)
+
+2. UPLOAD DATA FILES
+   
+   Option A: Raw Data CSV (for generation)
+   - Click "Drag and Drop or Select Raw Data CSV"
+   - Upload CSV file with required columns:
+     * pdd_txn_id (required)
+     * quote_date (format: dd/mm/yyyy)
+     * qc_answer
+     * auditor_answer
+     * cscan_answer
+   - System will:
+     * Extract unique pdd_txn_ids
+     * Batch into groups of 3000 if needed
+     * Execute Redash API queries for each batch
+     * Combine results and generate analysis CSV
+
+   Option B: Analysis Folder
+   - Click "Click to Select Analysis Folder"
+   - Select folder containing:
+     * analysis_*.csv file (main analysis CSV)
+     * eval/ subfolder with eval CSV files (optional)
+     * threshold.json (optional, uses default if not found)
+   - System will:
+     * Load existing analysis CSV
+     * Join with eval results if eval folder exists
+     * Create new_cscan_answer and new_acc% columns
+     * Generate updated confusion matrices
+
+   Option C: Analysis CSV (direct)
+   - Click "Drag and Drop or Select Analysis CSV"
+   - Upload existing analysis CSV file
+   - System will:
+     * Load the CSV directly
+     * Generate UUID JSONs and confusion matrices
+     * Make data available in other tabs
+
+3. GENERATE REPORT
+   - Click "🚀 Generate Report" button
+   - Wait for completion (status shown in progress message)
+   - For large datasets (>3000 records):
+     * System automatically batches requests
+     * Shows progress for each batch
+     * Combines all results
+   - Download ZIP file automatically starts
+   - Data is automatically loaded into dashboard
+
+4. RESET DATA (Optional)
+   - Click "🔄 Reset Data" to clear all loaded data
+   - Use when you want to start fresh with new data
+
+OUTPUT FILES
+------------
+- analysis_YYYY_MM_DD.csv - Main analysis CSV
+- confusion_matrix_acc.png - Accuracy confusion matrix
+- confusion_matrix_comparison.png - Model comparison matrix
+- threshold.json - Threshold configuration
+- eval/ folder - Eval results (if provided)
+- UUID JSON files - For each side (top, bottom, left, right, back, front)
+
+NOTES
+-----
+- Redash API settings are hardcoded (can be modified in code)
+- Batching is automatic for datasets > 3000 records
+- Output folder name is date-based only (no question name)
+- final_answer uses: auditor_answer if available, else qc_answer
+
+================================================================================
+                    📈 ANALYTICS TAB
+================================================================================
+
+PURPOSE
+-------
+View comprehensive performance metrics and visualizations.
+
+AUTOMATIC DISPLAY
+-----------------
+- Data is automatically loaded from Report Generation
+- All metrics update based on loaded data
+- No user interaction required to view analytics
+
+SECTIONS
+--------
+
+1. PERFORMANCE OVERVIEW CARDS
+   - Total Records: Count of all records
+   - Deployed Model Accuracy: Overall accuracy of deployed model
+   - New Model Accuracy: Overall accuracy of new model (if available)
+   - Agreement Rate: Percentage of records where both models agree
+
+2. DAY-WISE PERFORMANCE TREND
+   - Line chart showing accuracy trends over time
+   - Grouped by quote_date (dd/mm/yyyy format)
+   - Shows both deployed and new model trends
+   - Export using Plotly toolbar (camera icon)
+
+3. MODEL COMPARISON METRICS TABLE
+   - Detailed comparison between deployed and new models
+   - Metrics include:
+     * Category-level accuracy
+     * Sample counts
+     * Error rates
+   - Export to CSV using "📥 Export Metrics CSV" button
+
+4. CATEGORY PERFORMANCE BREAKDOWN
+   - Bar chart showing accuracy by category
+   - Compares deployed vs new model performance
+   - Helps identify categories needing improvement
+
+5. ERROR ANALYSIS
+   - Chart showing misclassification patterns
+   - Identifies common error types
+   - Helps understand model weaknesses
+
+6. PERFORMANCE BY SIDE
+   - Chart comparing accuracy across sides
+   - Shows which sides perform better/worse
+   - Useful for side-specific improvements
+
+7. SCORE DISTRIBUTION COMPARISON
+   - Histograms showing score distributions
+   - Compares deployed vs new model scores
+   - Helps understand score patterns
+
+8. AGREEMENT ANALYSIS
+   - Chart showing agreement/disagreement patterns
+   - Identifies where models agree or disagree
+   - Helps understand model differences
+
+================================================================================
+                    📊 CONFUSION MATRICES TAB
+================================================================================
+
+PURPOSE
+-------
+View model performance through confusion matrices and drill down into specific cells.
+
+MATRIX DISPLAY
+--------------
+- Two matrices shown side-by-side:
+  * Deployed Model (left): cscan_answer vs final_answer
+  * New Model (right): new_cscan_answer vs final_answer
+
+
+INTERACTING WITH MATRICES
+--------------------------
+1. Click any cell in either matrix
+2. System will:
+   - Filter records matching that cell's predicted and actual values
+   - Navigate to Cell Details tab automatically
+   - Display filtered records
+   - Show cell information in title (e.g., "No Defect → Minor Scratch")
+
+MATRIX TITLES
+-------------
+- Single date: "Confusion Matrix: dd/mm/yyyy"
+- Multiple dates: "Confusion Matrix: dd/mm/yyyy - dd/mm/yyyy" (min - max)
+
+NOTES
+-----
+- Matrices use category normalization (e.g., "glass panel damaged" merged with "cracked or broken panel" for physicalConditionPanel)
+- Category order matches threshold.json configuration
+- New Model matrix only shows if new_cscan_answer column exists
+
+================================================================================
+                    📷 IMAGE VIEWER TAB
+================================================================================
+
+PURPOSE
+-------
+Browse, filter, and analyze records with detailed image views.
+
+FILTERING RECORDS
+-----------------
+
+1. ANSWER FILTERS
+   - Deployed CScan Answer: Multi-select dropdown
+   - New CScan Answer: Multi-select dropdown
+   - Final Answer: Multi-select dropdown
+   - Empty selection = All values included
+
+2. CONTRIBUTING SIDES FILTERS
+   - Deployed Contributing Sides: Multi-select (includes "(Blank)" option)
+   - New Contributing Sides: Multi-select (includes "(Blank)" option)
+   - Filter by which sides contributed to the answer
+
+3. SCORE FILTERS
+   - Deployed Side Score Filter:
+     * Range slider (0-100, integer values only)
+     * Side multiselect dropdown
+     * Filters records where ANY selected side has score in range
+     * Only applies if range is not [0, 100] OR specific sides selected
+   - New Side Score Filter:
+     * Same as deployed filter
+     * Only applies if new model data exists
+
+4. APPLYING FILTERS
+   - Set filter values
+   - Click "🔍 Apply Filters" button
+   - Records update immediately
+   - Stats bar shows filtered count
+
+5. RESETTING FILTERS
+   - Click "🔄 Reset Filters" button
+   - All filters cleared
+   - All records shown
+
+
+VIEWING RECORDS
+---------------
+
+1. TABLE VIEW
+   - Columns: Date, Deployed Answer, New Answer, Contributing Sides
+   - Click arrow (▶) or date to expand/collapse row
+
+2. EXPANDED ROW VIEW
+   - Shows detailed information for the record
+   - Image gallery for all 6 sides (top, bottom, left, right, back, front)
+   - Score badges for each side
+   - UUID display
+   - Copy Request Body button
+
+3. IMAGE DISPLAY
+   - Each side shows:
+     * Deployed model image (if available)
+     * New model image (if available)
+     * Single image view when only deployed available
+   - Images show:
+     * Input image (original)
+     * Result image (processed)
+   - Toggle between input/result using badge button
+
+4. IMAGE INTERACTIONS
+   - Toggle Mode: Click "🔄 Input" or "🔄 Result" badge
+     * Toggle state is record-specific
+     * Each record maintains its own toggle state
+   - Expand Image: Click any image to open in modal
+     * Full-size view
+     * Close with X button or click outside
+   - Copy Request Body: Click button below UUID
+     * Copies request body to clipboard
+     * Works for each side independently
+
+5. SCORE BADGES
+   - Color-coded badges show scores
+   - Red badge = Contributing side
+   - Green badge = Non-contributing side
+   - Score value displayed on badge
+
+EXPORTING DATA
+--------------
+- Click "📥 Export Audit CSV" button
+- Exports records that have been audited (tagged)
+- Includes audit_tag column
+- Downloads as CSV file
+
+================================================================================
+                    🎛️ THRESHOLD TWEAKER TAB
+================================================================================
+
+PURPOSE
+-------
+Adjust thresholds and optimize model performance in real-time.
+
+MODEL SELECTION
+---------------
+- Toggle between "Deployed Model" and "New Model"
+- Active model highlighted in blue
+- Matrices and thresholds update based on selection
+- Headers show selected model:
+  * "Deployed Model (Reference Matrix)" / "Deployed Model (Adjusted Matrix)"
+  * "New Model (Reference Matrix)" / "New Model (Adjusted Matrix)"
+
+VIEWING MATRICES
+----------------
+- Reference Matrix: Baseline with original thresholds
+- Adjusted Matrix: Performance with modified thresholds
+- Each matrix shows:
+  * Accuracy percentage
+  * Sample count
+  * Color-coded cells
+
+ADJUSTING THRESHOLDS
+--------------------
+
+1. SELECT SIDE
+   - Click side button: Back, Left, Right, Top, Bottom, Front
+   - Selected side highlighted
+
+2. ADJUST SLIDERS
+   - Each category has a range slider (0-100, integer values only)
+   - Drag handles to set min/max values
+   - Values update in real-time
+   - Display shows current min/max values
+
+3. VIEW IMPACT
+   - Impact Summary shows:
+     * Records Changed: Count of records affected
+     * Accuracy Delta: Change from original accuracy
+     * Original Accuracy: Baseline accuracy
+   - Adjusted matrix updates immediately
+   - Changed records displayed below
+
+VIEWING CHANGED RECORDS
+-----------------------
+- Changed records shown by default
+- Full filtering capabilities (same as Image Viewer)
+- Shows records where classification changed
+- Can filter, navigate, and export
+
+OPTIMIZING THRESHOLDS
+---------------------
+
+1. OPTIMIZE ALL THRESHOLDS
+   - Click "🎯 Optimize Thresholds" button
+   - Optimizes all sides to maximize accuracy
+   - Shows processing loader during optimization
+   - May take 10-30 seconds depending on data size
+
+2. OPTIMIZE SELECTED SIDE
+   - Select a side first
+   - Click "🎯 Optimize Selected Side" button
+   - Optimizes only the selected side
+   - Faster than optimizing all sides
+
+RESETTING THRESHOLDS
+--------------------
+- Click "🔄 Reset to Original" button
+- Restores original thresholds from threshold.json
+- Matrices return to baseline
+- Changed records cleared
+
+NOTES
+-----
+- Threshold adjustments are real-time
+- Optimization uses coordinate descent algorithm
+- Category order matches threshold.json
+- Integer values only for thresholds

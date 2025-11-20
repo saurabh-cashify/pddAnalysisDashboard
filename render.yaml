@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: pdd-analysis-dashboard
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: REDASH_API_KEY
+        sync: false  # Set this in Render dashboard
+      - key: REDASH_QUERY_ID
+        value: "4261"  # Can be overridden in Render dashboard
+      - key: REDASH_BASE_URL
+        value: "http://redash.prv.api.cashify.in"  # Can be overridden in Render dashboard
+      - key: REDASH_MODE
+        value: "qc_automation"  # Can be overridden in Render dashboard
+
