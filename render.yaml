@@ -3,7 +3,7 @@ services:
     name: pdd-analysis-dashboard
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python app.py
+    startCommand: gunicorn app:server
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.0

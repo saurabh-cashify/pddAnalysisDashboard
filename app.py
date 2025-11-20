@@ -190,6 +190,9 @@ register_cell_details_callbacks(app)
 
 # =============== RUN APP ===============
 
+# Expose server for gunicorn (production)
+server = app.server
+
 if __name__ == '__main__':
     import os
     # Get port from environment variable (Render sets this), default to 8050 for local
