@@ -6,7 +6,7 @@ services:
     startCommand: python app.py
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11
+        value: 3.13.0
       - key: REDASH_API_KEY
         sync: false  # Set this in Render dashboard
       - key: REDASH_QUERY_ID
