@@ -103,7 +103,7 @@ def create_metrics_panel(matrix_data, color_scheme="primary"):
             html.H4([
                 html.I(className="fas fa-chart-line me-2"),
                 "Metrics"
-            ], className="mb-0", style={"fontSize": "1.3em", "fontWeight": "600"}),
+            ], className="mb-0", style={"fontSize": "1.3em", "fontWeight": "600", "color": color[0]}),
             style={
                 "background": "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
                 "borderBottom": "2px solid #e2e8f0"
@@ -120,10 +120,11 @@ def create_metrics_panel(matrix_data, color_scheme="primary"):
                             ], style={"fontSize": "0.85em", "fontWeight": "600", "marginBottom": "8px", "opacity": "0.95"}),
                             html.H3(f"{matrix_data['accuracy']:.2f}%", className="mb-0", style={
                                 "fontWeight": "700",
-                                "fontSize": "2em",
-                                "textShadow": "0 2px 4px rgba(0,0,0,0.1)"
+                                "fontSize": "1.6em",
+                                "textShadow": "0 2px 4px rgba(0,0,0,0.1)",
+                                "whiteSpace": "nowrap"
                             })
-                        ], style={"padding": "1.5rem"})
+                        ], style={"padding": "1.5rem", "overflow": "hidden"})
                     ], style={
                         "background": f"linear-gradient(135deg, {color[0]} 0%, {color[1]} 100%)", 
                         "color": "white",
@@ -131,6 +132,30 @@ def create_metrics_panel(matrix_data, color_scheme="primary"):
                         "borderRadius": "10px",
                         "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.15)",
                         "transition": "transform 0.2s ease",
+                        "overflow": "hidden"
+                    }, className="hover-lift")
+                ], md=4),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.Div([
+                                html.I(className="fas fa-check-circle me-2"),
+                                "Correct"
+                            ], style={"fontSize": "0.85em", "fontWeight": "600", "marginBottom": "8px", "opacity": "0.95"}),
+                            html.H3(str(matrix_data['correct']), className="mb-0", style={
+                                "fontWeight": "700",
+                                "fontSize": "2em",
+                                "textShadow": "0 2px 4px rgba(0,0,0,0.1)"
+                            })
+                        ], style={"padding": "1.5rem", "overflow": "hidden"})
+                    ], style={
+                        "background": "linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)", 
+                        "color": "white",
+                        "border": "none",
+                        "borderRadius": "10px",
+                        "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.15)",
+                        "transition": "transform 0.2s ease",
+                        "overflow": "hidden"
                     }, className="hover-lift")
                 ], md=4),
                 dbc.Col([
@@ -143,9 +168,11 @@ def create_metrics_panel(matrix_data, color_scheme="primary"):
                             html.H3(str(matrix_data['total']), className="mb-0", style={
                                 "fontWeight": "700",
                                 "fontSize": "2em",
-                                "textShadow": "0 2px 4px rgba(0,0,0,0.1)"
+                                "textShadow": "0 2px 4px rgba(0,0,0,0.1)",
+                                "wordBreak": "break-word",
+                                "overflowWrap": "break-word"
                             })
-                        ], style={"padding": "1.5rem"})
+                        ], style={"padding": "1.5rem", "overflow": "hidden"})
                     ], style={
                         "background": "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)", 
                         "color": "white",
@@ -153,31 +180,79 @@ def create_metrics_panel(matrix_data, color_scheme="primary"):
                         "borderRadius": "10px",
                         "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.15)",
                         "transition": "transform 0.2s ease",
-                    }, className="hover-lift")
-                ], md=4),
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardBody([
-                            html.Div([
-                                html.I(className="fas fa-check-circle me-2"),
-                                "Correct Predictions"
-                            ], style={"fontSize": "0.85em", "fontWeight": "600", "marginBottom": "8px", "opacity": "0.95"}),
-                            html.H3(str(matrix_data['correct']), className="mb-0", style={
-                                "fontWeight": "700",
-                                "fontSize": "2em",
-                                "textShadow": "0 2px 4px rgba(0,0,0,0.1)"
-                            })
-                        ], style={"padding": "1.5rem"})
-                    ], style={
-                        "background": "linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)", 
-                        "color": "white",
-                        "border": "none",
-                        "borderRadius": "10px",
-                        "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.15)",
-                        "transition": "transform 0.2s ease",
+                        "overflow": "hidden"
                     }, className="hover-lift")
                 ], md=4),
             ], className="g-3")
+        ], style={"padding": "1.5rem"})
+    ], className="mt-4", style={
+        "border": "1px solid #e2e8f0",
+        "borderRadius": "12px",
+        "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.08)"
+    })
+
+
+def create_per_class_metrics_table(matrix_data, model_name="Model", color_scheme="primary"):
+    """Create per-class precision and recall metrics table"""
+    
+    if not matrix_data or not matrix_data.get('precisions') or not matrix_data.get('recalls'):
+        return html.Div()
+    
+    precisions = matrix_data.get('precisions', {})
+    recalls = matrix_data.get('recalls', {})
+    labels = matrix_data.get('labels', [])
+    
+    if not labels:
+        return html.Div()
+    
+    # Color schemes
+    colors = {
+        "primary": "#3b82f6",
+        "success": "#10b981",
+        "danger": "#ef4444"
+    }
+    
+    header_color = colors.get(color_scheme, colors["primary"])
+    
+    # Create table rows
+    table_rows = []
+    for label in labels:
+        precision_val = precisions.get(label, 0)
+        recall_val = recalls.get(label, 0)
+        
+        table_rows.append(
+            html.Tr([
+                html.Td(label.capitalize(), style={"fontWeight": "600", "padding": "0.75rem"}),
+                html.Td(f"{precision_val:.2f}%", style={"padding": "0.75rem", "textAlign": "center"}),
+                html.Td(f"{recall_val:.2f}%", style={"padding": "0.75rem", "textAlign": "center"})
+            ], style={"borderBottom": "1px solid #e2e8f0"})
+        )
+    
+    return dbc.Card([
+        dbc.CardHeader(
+            html.H4([
+                html.I(className="fas fa-table me-2"),
+                f"{model_name} - Per-Class Metrics"
+            ], className="mb-0", style={"fontSize": "1.3em", "fontWeight": "600", "color": header_color}),
+            style={
+                "background": "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+                "borderBottom": "2px solid #e2e8f0"
+            }
+        ),
+        dbc.CardBody([
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Class", style={"fontWeight": "700", "padding": "0.75rem", "backgroundColor": "#f8fafc"}),
+                        html.Th("Precision", style={"fontWeight": "700", "padding": "0.75rem", "textAlign": "center", "backgroundColor": "#f8fafc"}),
+                        html.Th("Recall", style={"fontWeight": "700", "padding": "0.75rem", "textAlign": "center", "backgroundColor": "#f8fafc"})
+                    ])
+                ]),
+                html.Tbody(table_rows)
+            ], bordered=True, hover=True, responsive=True, striped=True, style={
+                "marginBottom": "0",
+                "fontSize": "0.95em"
+            })
         ], style={"padding": "1.5rem"})
     ], className="mt-4", style={
         "border": "1px solid #e2e8f0",
@@ -347,7 +422,8 @@ def register_confusion_matrix_callbacks(app):
                                     figure=create_confusion_matrix_plot(old_matrix_data, 'old-matrix-plot', "Deployed Model"),
                                     config={'displayModeBar': True, 'displaylogo': False}
                                 ),
-                                create_metrics_panel(old_matrix_data, "primary")
+                                create_metrics_panel(old_matrix_data, "primary"),
+                                create_per_class_metrics_table(old_matrix_data, "Deployed Model", "primary")
                             ], style={"padding": "1.5rem"})
                         ], style={
                             "border": "1px solid #e2e8f0",
@@ -379,7 +455,8 @@ def register_confusion_matrix_callbacks(app):
                                     figure=create_confusion_matrix_plot(new_matrix_data, 'new-matrix-plot', "New Model"),
                                     config={'displayModeBar': True, 'displaylogo': False}
                                 ),
-                                create_metrics_panel(new_matrix_data, "success")
+                                create_metrics_panel(new_matrix_data, "success"),
+                                create_per_class_metrics_table(new_matrix_data, "New Model", "success")
                             ], style={"padding": "1.5rem"})
                         ], style={
                             "border": "1px solid #e2e8f0",
@@ -417,7 +494,8 @@ def register_confusion_matrix_callbacks(app):
                             figure=create_confusion_matrix_plot(old_matrix_data, 'old-matrix-plot', "Deployed Model"),
                             config={'displayModeBar': True, 'displaylogo': False}
                         ),
-                        create_metrics_panel(old_matrix_data, "primary")
+                        create_metrics_panel(old_matrix_data, "primary"),
+                        create_per_class_metrics_table(old_matrix_data, "Deployed Model", "primary")
                     ], style={"padding": "1.5rem"})
                 ], style={
                     "border": "1px solid #e2e8f0",

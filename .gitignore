@@ -44,7 +44,7 @@ analysisdata/
 eval_runs/
 raw_data/
 failing_cases/
-
+severityTraining/
 # Generated files
 *.log
 *.pyc

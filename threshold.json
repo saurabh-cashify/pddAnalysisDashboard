@@ -22,8 +22,8 @@
     },
     "back": {
       "No Defect in Panel": [0, 20],
-      "Cracked or Broken Panel": [20, 90],
-      "Missing Panel": [90, 100]
+      "Cracked or Broken Panel": [20, 95],
+      "Missing Panel": [95, 100]
     }
   },
   "physicalConditionScratch": {
@@ -70,31 +70,67 @@
   },
   "physicalConditionDent": {
     "top": {
-      "No Defect in Panel": [0, 10],
-      "Minor Dent": [10, 50],
-      "Major Dent": [50, 100]
+      "No Dents": [0, 10],
+      "Minor Dents": [10, 50],
+      "Major Dents": [50, 100]
     },
     "bottom": {
-      "No Defect in Panel": [0, 10],
-      "Minor Dent": [10, 50],
-      "Major Dent": [50, 100]
+      "No Dents": [0, 10],
+      "Minor Dents": [10, 50],
+      "Major Dents": [50, 100]
     },
     "left": {
-      "No Defect in Panel": [0, 10],
-      "Minor Dent": [10, 50],
-      "Major Dent": [50, 100]
+      "No Dents": [0, 10],
+        "Minor Dents": [10, 50],
+      "Major Dents": [50, 100]
     },
     "right": {
-      "No Defect in Panel": [0, 10],
-      "Minor Dent": [10, 50],
-      "Major Dent": [50, 100]
+      "No Dents": [0, 10],
+      "Minor Dents": [10, 50],
+      "Major Dents": [50, 100]
     }
   },
   "screenPhysicalCondition": {
     "front": {
-      "No Defect in Panel": [0, 10],
-      "Screen Crack": [10, 60],
-      "Broken Screen": [60, 100]
+      "Excellent": [0, 10],
+      "Normal Sign of Usage": [10, 30],
+      "Minor Scratches": [30, 60],
+      "Heavy Scratches": [60, 100],
+      "Screen Cracked or Glass Broken": [100, 100]
+    }
+  },
+  "screenDisplaySpot": {
+    "front": {
+      "No Spot on Screen": [0, 10],
+      "Upto 3 white spots": [10, 50],
+      "More than 3 spots": [50, 80],
+      "Colored Spots": [80, 100]
+    }
+  },
+  "screenBubblePaint": {
+    "front": {
+      "No paint peel-off/Bubble": [0, 10],
+      "Minor paint peel-off/ less than 2 Bubbles": [10, 50],
+      "Major paint peel-off/ more than 2 Bubble": [50, 100]
+    }
+  },
+  "screenDisplayLines": {
+    "front": {
+      "No Line on Screen": [0, 10],
+      "Lines on Screen": [10, 50]
+    }
+  },
+  "screenDiscoloration": {
+    "front": {
+      "No Discoloration": [0, 10],
+      "Minor Discoloration": [10, 50],
+      "Major Discoloration": [50, 100]
+    }
+  },
+  "cameraGlassBroken": {
+    "back": {
+      "Camera Glass Broken": [0, 40],
+      "Camera Glass Not Broken": [40, 100]
     }
   },
   "default": {

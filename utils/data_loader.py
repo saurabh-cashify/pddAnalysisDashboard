@@ -81,7 +81,11 @@ def prepare_matrix_data(
             'accuracy': 0,
             'correct': 0,
             'total': 0,
-            'cell_records': {}
+            'cell_records': {},
+            'precision': 0,
+            'recall': 0,
+            'precisions': {},
+            'recalls': {}
         }
     
     # Normalize values
@@ -121,7 +125,11 @@ def prepare_matrix_data(
             'accuracy': 0,
             'correct': 0,
             'total': 0,
-            'cell_records': {}
+            'cell_records': {},
+            'precision': 0,
+            'recall': 0,
+            'precisions': {},
+            'recalls': {}
         }
     
     # Initialize matrix
@@ -144,13 +152,43 @@ def prepare_matrix_data(
     
     accuracy = (correct / len(valid_df) * 100) if len(valid_df) > 0 else 0
     
+    # Calculate precision and recall for each category
+    precisions = []
+    recalls = []
+    
+    for i, label in enumerate(labels):
+        # True Positives: diagonal element
+        tp = z_data[i][i]
+        
+        # False Positives: sum of column i (excluding diagonal)
+        fp = sum(z_data[j][i] for j in range(len(labels)) if j != i)
+        
+        # False Negatives: sum of row i (excluding diagonal)
+        fn = sum(z_data[i][j] for j in range(len(labels)) if j != i)
+        
+        # Precision = TP / (TP + FP)
+        precision = (tp / (tp + fp) * 100) if (tp + fp) > 0 else 0
+        precisions.append(precision)
+        
+        # Recall = TP / (TP + FN)
+        recall = (tp / (tp + fn) * 100) if (tp + fn) > 0 else 0
+        recalls.append(recall)
+    
+    # Macro-averaged precision and recall (average across all classes)
+    macro_precision = sum(precisions) / len(precisions) if len(precisions) > 0 else 0
+    macro_recall = sum(recalls) / len(recalls) if len(recalls) > 0 else 0
+    
     return {
         'labels': labels,
         'matrix': z_data,
         'accuracy': accuracy,
         'correct': correct,
         'total': len(valid_df),
-        'cell_records': cell_records
+        'cell_records': cell_records,
+        'precision': macro_precision,
+        'recall': macro_recall,
+        'precisions': dict(zip(labels, precisions)),  # Per-class precision
+        'recalls': dict(zip(labels, recalls))  # Per-class recall
     }
 
 

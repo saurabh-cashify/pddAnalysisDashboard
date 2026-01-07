@@ -28,6 +28,8 @@ API_KEY = os.getenv("REDASH_API_KEY", "IY2HlHUAz3ZX0Y1p2rg4vaFciUOV0MIlkJT0eyOe"
 QUERY_ID = int(os.getenv("REDASH_QUERY_ID", "4261"))
 BASE_URL = os.getenv("REDASH_BASE_URL", "http://redash.prv.api.cashify.in")
 MODE = os.getenv("REDASH_MODE", "qc_automation")
+BACK_KEY = os.getenv("BACK_KEY", "backmerged")
+FRONT_KEY = os.getenv("FRONT_KEY", "whiterotatedmerged")
 # =======================================================
 
 
@@ -101,7 +103,7 @@ def create_report_generation_tab():
                             persistence=True,
                             persistence_type='session'
                         ),
-                    ], md=6),
+                    ], md=4),
                     dbc.Col([
                         dbc.Label("Output Folder Name", html_for="output-folder"),
                         dbc.Input(
@@ -110,28 +112,22 @@ def create_report_generation_tab():
                             placeholder="analysis_YYYY_MM_DD",
                             value=f"analysis_{datetime.now().strftime('%Y_%m_%d')}"
                         ),
-                    ], md=6),
-                ], className="mb-3"),
-                
-                dbc.Row([
+                    ], md=4),
                     dbc.Col([
-                        dbc.Label("Back Key", html_for="back-key"),
-                        dbc.Input(
-                            id="back-key",
-                            type="text",
-                            placeholder="backmerged",
-                            value="backmerged"
+                        dbc.Label("Source", html_for="source-select"),
+                        dcc.Dropdown(
+                            id="source-select",
+                            options=[
+                                {'label': 'Cscanpro-Line2', 'value': 'Cscanpro-Line2'},
+                                {'label': 'Cscanpro-Line3', 'value': 'Cscanpro-Line3'}
+                            ],
+                            value='Cscanpro-Line2',
+                            placeholder="Select source",
+                            style={"color": "#000"},
+                            persistence=True,
+                            persistence_type='session'
                         ),
-                    ], md=6),
-                    dbc.Col([
-                        dbc.Label("Front Key", html_for="front-key"),
-                        dbc.Input(
-                            id="front-key",
-                            type="text",
-                            placeholder="whiterotatedmerged",
-                            value="whiterotatedmerged"
-                        ),
-                    ], md=6),
+                    ], md=4),
                 ], className="mb-3"),
             ])
         ], className="mb-4"),
@@ -364,9 +360,8 @@ def register_report_generation_callbacks(app):
          Output("download-folder", "data")],  # Direct download output
         Input("generate-report-btn", "n_clicks"),
         [State("question-name", "value"),
-         State("back-key", "value"),
-         State("front-key", "value"),
          State("output-folder", "value"),
+         State("source-select", "value"),
          State("raw-data-upload", "contents"),
          State("raw-data-upload", "filename"),
          State("analysis-csv-upload", "contents"),
@@ -377,13 +372,18 @@ def register_report_generation_callbacks(app):
     )
     def generate_report(
         n_clicks,
-        question_name, back_key, front_key,
-        output_folder, raw_data_contents, raw_data_filename,
+        question_name,
+        output_folder, source,
+        raw_data_contents, raw_data_filename,
         analysis_csv_contents, analysis_csv_filename,
         eval_folder_contents, eval_folder_filename
     ):
         if not n_clicks or n_clicks == 0:
             raise PreventUpdate
+        
+        # Get back_key and front_key from environment variables
+        back_key = BACK_KEY
+        front_key = FRONT_KEY
         
         # Validation
         if not all([question_name, back_key, front_key, output_folder]):
@@ -669,7 +669,8 @@ def register_report_generation_callbacks(app):
                     raw_data_path=temp_raw_file,
                     output_folder=output_path,
                     eval_folder=eval_path,
-                    include_eval=eval_path is not None
+                    include_eval=eval_path is not None,
+                    source=source if source else "Cscanpro-Line2"
                 )
             
             # Load CSV data for auto-loading in other tabs

@@ -67,12 +67,13 @@ class ReportGenerator:
         self.mode = mode
         self.threshold_config = load_threshold_config(threshold_path)
     
-    def load_raw_data_csv(self, csv_path: str) -> pd.DataFrame:
+    def load_raw_data_csv(self, csv_path: str, source: str = "Cscanpro-Line2") -> pd.DataFrame:
         """
         Load raw data CSV with multiple encoding/delimiter attempts
         
         Args:
             csv_path: Path to raw data CSV
+            source: Source type - "Cscanpro-Line2" or "Cscanpro-Line3"
             
         Returns:
             DataFrame with raw data
@@ -106,8 +107,16 @@ class ReportGenerator:
         if raw_df is None:
             raise ValueError(f"Could not load {csv_path} with any encoding/delimiter")
         
-        if 'pdd_txn_id' not in raw_df.columns:
-            raise KeyError(f"Column 'pdd_txn_id' not found. Available: {list(raw_df.columns)}")
+        # Validate columns based on source
+        if source == "Cscanpro-Line3":
+            required_cols = ['line1/2_txn_id', 'line3_txn_id', 'tester_answer', 'line1/2_answer', 'line3_answer', 'created_date']
+            missing_cols = [col for col in required_cols if col not in raw_df.columns]
+            if missing_cols:
+                raise KeyError(f"Missing columns for Line3 CSV: {missing_cols}. Available: {list(raw_df.columns)}")
+        else:
+            # Line2 validation
+            if 'pdd_txn_id' not in raw_df.columns:
+                raise KeyError(f"Column 'pdd_txn_id' not found. Available: {list(raw_df.columns)}")
         
         return raw_df
     
@@ -367,6 +376,73 @@ class ReportGenerator:
                 df.at[first_idx, accuracy_col] = round(accuracy, 2)
         
         return df
+    
+    def create_contributing_sides_line3(self, df: pd.DataFrame, cscan_col: str, output_col: str, prefix: str = 'line2_') -> pd.DataFrame:
+        """
+        Create contributing_sides column for Line3 with prefix support
+        Similar to create_contributing_sides but works with prefixed columns
+        """
+        if cscan_col not in df.columns:
+            print(f"⚠️  {cscan_col} column not found, skipping {output_col}")
+            return df
+        
+        if self.question_name not in self.threshold_config:
+            print(f"⚠️  Question '{self.question_name}' not in threshold config")
+            return df
+        
+        question_thresholds = self.threshold_config[self.question_name]
+        severity_order = get_severity_order_from_thresholds(question_thresholds)
+        sides = ['top', 'bottom', 'left', 'right', 'back', 'front']
+        
+        result_df = df.copy()
+        result_df[output_col] = None
+        
+        for idx, row in df.iterrows():
+            cscan_answer = row.get(cscan_col)
+            
+            if pd.isna(cscan_answer) or (isinstance(cscan_answer, str) and not cscan_answer.strip()):
+                continue
+            
+            side_categories = []
+            
+            for side in sides:
+                score_col = f'{prefix}{side}_score' if prefix else f'{side}_score'
+                if score_col not in df.columns:
+                    continue
+                
+                score = row.get(score_col)
+                if pd.isna(score):
+                    continue
+                
+                if side not in question_thresholds:
+                    continue
+                
+                side_thresholds = question_thresholds[side]
+                category = get_category_from_score(score, side_thresholds)
+                side_categories.append((side, category, score))
+            
+            if not side_categories:
+                continue
+            
+            # Check if cscan_answer is least severe
+            if is_least_severe_category(cscan_answer, self.question_name, self.threshold_config):
+                # If least severe, don't populate contributing_sides (same as original)
+                contributing_sides = []
+            else:
+                # Find all sides that match the cscan_answer (same logic as original)
+                contributing_sides = [side for side, cat, _ in side_categories if cat == cscan_answer]
+            
+            result_df.at[idx, output_col] = ', '.join(contributing_sides) if contributing_sides else ''
+        
+        # Place column after cscan_col
+        cols = list(result_df.columns)
+        if cscan_col in cols:
+            cscan_idx = cols.index(cscan_col)
+            cols.remove(output_col)
+            cols.insert(cscan_idx + 1, output_col)
+            result_df = result_df[cols]
+        
+        return result_df
     
     def join_with_eval_results(self, df: pd.DataFrame, eval_folder: str) -> pd.DataFrame:
         """
@@ -678,6 +754,52 @@ class ReportGenerator:
                 
                 print(f"✅ Saved {len(uuid_list)} UUIDs to {filepath}")
     
+    def save_uuid_json_files_line3(self, df: pd.DataFrame, output_folder: str):
+        """Save UUID JSON files for Line3 - both line2_* prefixed and regular"""
+        os.makedirs(output_folder, exist_ok=True)
+        
+        # Regular UUID files (from line3 results)
+        uuid_columns = {
+            'top_uuid': 'top_uuid.json',
+            'bottom_uuid': 'bottom_uuid.json',
+            'right_uuid': 'right_uuid.json',
+            'left_uuid': 'left_uuid.json',
+            'back_uuid': 'back_uuid.json',
+            'front_uuid': 'front_uuid.json'
+        }
+        
+        for uuid_column, filename in uuid_columns.items():
+            if uuid_column in df.columns:
+                uuids = df[uuid_column].dropna().tolist()
+                uuid_list = [{"image_uuid": uuid} for uuid in uuids if uuid and str(uuid).strip()]
+                
+                filepath = os.path.join(output_folder, filename)
+                with open(filepath, 'w') as f:
+                    json.dump(uuid_list, f, indent=2)
+                
+                print(f"✅ Saved {len(uuid_list)} UUIDs to {filepath}")
+        
+        # Line2 UUID files (with line2_ prefix)
+        line2_uuid_columns = {
+            'line2_top_uuid': 'line2_top_uuid.json',
+            'line2_bottom_uuid': 'line2_bottom_uuid.json',
+            'line2_right_uuid': 'line2_right_uuid.json',
+            'line2_left_uuid': 'line2_left_uuid.json',
+            'line2_back_uuid': 'line2_back_uuid.json',
+            'line2_front_uuid': 'line2_front_uuid.json'
+        }
+        
+        for uuid_column, filename in line2_uuid_columns.items():
+            if uuid_column in df.columns:
+                uuids = df[uuid_column].dropna().tolist()
+                uuid_list = [{"image_uuid": uuid} for uuid in uuids if uuid and str(uuid).strip()]
+                
+                filepath = os.path.join(output_folder, filename)
+                with open(filepath, 'w') as f:
+                    json.dump(uuid_list, f, indent=2)
+                
+                print(f"✅ Saved {len(uuid_list)} UUIDs to {filepath}")
+    
     def reorder_columns(self, df: pd.DataFrame, include_new_columns: bool = False) -> pd.DataFrame:
         """
         Reorder columns according to specified order
@@ -963,12 +1085,158 @@ class ReportGenerator:
         
         print(f"✅ Comparison confusion matrix saved: {output_path}")
     
+    def process_line3_data(self, raw_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Process Line3 data: extract both line1/2_txn_id and line3_txn_id,
+        run separate queries, and merge results with appropriate prefixes.
+        
+        Args:
+            raw_df: Raw DataFrame with Line3 structure
+            
+        Returns:
+            DataFrame with both line2_* and regular columns merged
+        """
+        print("\n🔄 Processing Line3 data (dual queries)...")
+        
+        # Filter out rows where any of line1/2_answer, line3_answer, or tester_answer is "Not Checked"
+        initial_count = len(raw_df)
+        answer_columns = ['line1/2_answer', 'line3_answer', 'tester_answer']
+        
+        # Check which columns exist
+        existing_answer_cols = [col for col in answer_columns if col in raw_df.columns]
+        
+        if existing_answer_cols:
+            # Filter out rows where any of these columns has "Not Checked"
+            mask = ~raw_df[existing_answer_cols].apply(
+                lambda row: row.astype(str).str.strip().str.lower().eq('not checked').any(),
+                axis=1
+            )
+            raw_df = raw_df[mask].copy()
+            filtered_count = initial_count - len(raw_df)
+            
+            if filtered_count > 0:
+                print(f"🗑️  Filtered out {filtered_count} rows with 'Not Checked' in answer columns")
+                print(f"   Remaining rows: {len(raw_df)}")
+            else:
+                print(f"   ✓ No rows with 'Not Checked' found")
+        
+        # Step 1: Extract line1/2_txn_id and run query
+        print("\n📋 Step 1: Processing line1/2_txn_id...")
+        line2_txn_ids = raw_df['line1/2_txn_id'].dropna().unique().tolist()
+        print(f"✅ Found {len(line2_txn_ids)} unique line1/2_txn_id values")
+        
+        if len(line2_txn_ids) > 0:
+            # Execute query for line2
+            BATCH_SIZE = 3000
+            if len(line2_txn_ids) > BATCH_SIZE:
+                print(f"⚠️  Found {len(line2_txn_ids)} IDs (exceeds limit of {BATCH_SIZE})")
+                print(f"📦 Splitting into batches...")
+                batches = []
+                for i in range(0, len(line2_txn_ids), BATCH_SIZE):
+                    batches.append(line2_txn_ids[i:i + BATCH_SIZE])
+                
+                all_results = []
+                for batch_num, batch in enumerate(batches, 1):
+                    print(f"🔄 Processing line2 batch {batch_num}/{len(batches)}...")
+                    batch_df = self.execute_redash_query(batch)
+                    all_results.append(batch_df)
+                
+                line2_redash_df = pd.concat(all_results, ignore_index=True)
+            else:
+                line2_redash_df = self.execute_redash_query(line2_txn_ids)
+            
+            # Add line2_ prefix to all columns except pdd_txn_id (which we'll rename)
+            line2_redash_df = line2_redash_df.rename(columns={
+                'pdd_txn_id': 'line2_pdd_txn_id'
+            })
+            
+            # Add line2_ prefix to all other columns
+            rename_dict = {}
+            for col in line2_redash_df.columns:
+                if col != 'line2_pdd_txn_id':
+                    rename_dict[col] = f'line2_{col}'
+            line2_redash_df = line2_redash_df.rename(columns=rename_dict)
+            
+            # Merge with raw_df on line1/2_txn_id = line2_pdd_txn_id
+            raw_df = raw_df.merge(
+                line2_redash_df,
+                left_on='line1/2_txn_id',
+                right_on='line2_pdd_txn_id',
+                how='left'
+            )
+            print(f"✅ Merged line2 results: {len(line2_redash_df)} rows")
+        else:
+            print("⚠️  No line1/2_txn_id values found")
+        
+        # Step 2: Extract line3_txn_id and run query
+        print("\n📋 Step 2: Processing line3_txn_id...")
+        line3_txn_ids = raw_df['line3_txn_id'].dropna().unique().tolist()
+        print(f"✅ Found {len(line3_txn_ids)} unique line3_txn_id values")
+        
+        if len(line3_txn_ids) > 0:
+            # Execute query for line3
+            BATCH_SIZE = 3000
+            if len(line3_txn_ids) > BATCH_SIZE:
+                print(f"⚠️  Found {len(line3_txn_ids)} IDs (exceeds limit of {BATCH_SIZE})")
+                print(f"📦 Splitting into batches...")
+                batches = []
+                for i in range(0, len(line3_txn_ids), BATCH_SIZE):
+                    batches.append(line3_txn_ids[i:i + BATCH_SIZE])
+                
+                all_results = []
+                for batch_num, batch in enumerate(batches, 1):
+                    print(f"🔄 Processing line3 batch {batch_num}/{len(batches)}...")
+                    batch_df = self.execute_redash_query(batch)
+                    all_results.append(batch_df)
+                
+                line3_redash_df = pd.concat(all_results, ignore_index=True)
+            else:
+                line3_redash_df = self.execute_redash_query(line3_txn_ids)
+            
+            # Merge with raw_df on line3_txn_id = pdd_txn_id (no prefix for line3)
+            raw_df = raw_df.merge(
+                line3_redash_df,
+                left_on='line3_txn_id',
+                right_on='pdd_txn_id',
+                how='left'
+            )
+            print(f"✅ Merged line3 results: {len(line3_redash_df)} rows")
+        else:
+            print("⚠️  No line3_txn_id values found")
+        
+        # Step 3: Map columns
+        print("\n🔍 Step 3: Mapping columns...")
+        # tester_answer → qc_answer
+        if 'tester_answer' in raw_df.columns:
+            raw_df['qc_answer'] = raw_df['tester_answer']
+        
+        # line1/2_answer → line2_cscan_answer
+        if 'line1/2_answer' in raw_df.columns:
+            raw_df['line2_cscan_answer'] = raw_df['line1/2_answer']
+        
+        # line3_answer → cscan_answer
+        if 'line3_answer' in raw_df.columns:
+            raw_df['cscan_answer'] = raw_df['line3_answer']
+        
+        # created_date → quote_date
+        if 'created_date' in raw_df.columns:
+            raw_df['quote_date'] = raw_df['created_date']
+        
+        # Add auditor_answer column (empty for Line3, but needed for compatibility)
+        if 'auditor_answer' not in raw_df.columns:
+            raw_df['auditor_answer'] = None
+        
+        print("✅ Column mapping completed")
+        
+        return raw_df
+    
     def generate_report(
         self,
         raw_data_path: str,
         output_folder: str,
         eval_folder: Optional[str] = None,
-        include_eval: bool = True
+        include_eval: bool = True,
+        source: str = "Cscanpro-Line2"
     ) -> str:
         """
         Generate complete analysis report
@@ -978,17 +1246,23 @@ class ReportGenerator:
             output_folder: Folder to save output files
             eval_folder: Folder containing eval CSV files (optional)
             include_eval: Whether to include eval results
+            source: Source type - "Cscanpro-Line2" or "Cscanpro-Line3"
             
         Returns:
             Path to generated analysis CSV
         """
         print("=" * 60)
-        print("🚀 Starting Report Generation")
+        print(f"🚀 Starting Report Generation (Source: {source})")
         print("=" * 60)
         
+        # Branch based on source
+        if source == "Cscanpro-Line3":
+            return self.generate_report_line3(raw_data_path, output_folder, eval_folder, include_eval)
+        
+        # Original Line2 processing
         # Step 1: Load raw data
         print("\n📖 Step 1: Loading raw data CSV...")
-        raw_df = self.load_raw_data_csv(raw_data_path)
+        raw_df = self.load_raw_data_csv(raw_data_path, source=source)
         pdd_txn_ids = raw_df['pdd_txn_id'].dropna().unique().tolist()
         print(f"✅ Found {len(pdd_txn_ids)} unique transaction IDs")
         
@@ -1093,6 +1367,292 @@ class ReportGenerator:
         
         print("\n" + "=" * 60)
         print("✅ Report Generation Complete!")
+        print("=" * 60)
+        
+        return csv_path
+    
+    def create_new_cscan_answer_line3(self, df: pd.DataFrame, cscan_col: str, output_col: str, prefix: str = 'line2_') -> pd.DataFrame:
+        """Create new_cscan_answer for Line3 with prefix support"""
+        if cscan_col not in df.columns:
+            print(f"⚠️  {cscan_col} column not found, skipping {output_col}")
+            return df
+        
+        if self.question_name not in self.threshold_config:
+            print(f"⚠️  Question '{self.question_name}' not in threshold config")
+            return df
+        
+        question_thresholds = self.threshold_config[self.question_name]
+        severity_order = get_severity_order_from_thresholds(question_thresholds)
+        sides = ['top', 'bottom', 'left', 'right', 'back', 'front']
+        
+        new_answers = []
+        
+        for idx, row in df.iterrows():
+            side_categories = []
+            
+            for side in sides:
+                score_col = f'new_{prefix}{side}_score' if prefix else f'new_{side}_score'
+                if score_col not in df.columns:
+                    continue
+                
+                score = row.get(score_col)
+                if pd.isna(score):
+                    continue
+                
+                if side not in question_thresholds:
+                    continue
+                
+                side_thresholds = question_thresholds[side]
+                category = get_category_from_score(score, side_thresholds)
+                side_categories.append((side, category, score))
+            
+            if not side_categories:
+                new_answers.append(None)
+                continue
+            
+            all_categories = [cat for _, cat, _ in side_categories]
+            final_answer = None
+            for category in severity_order:
+                if category in all_categories:
+                    final_answer = category
+                    break
+            
+            if final_answer is None:
+                final_answer = all_categories[0] if all_categories else None
+            
+            new_answers.append(final_answer)
+        
+        result_df = df.copy()
+        result_df[output_col] = new_answers
+        
+        cols = list(result_df.columns)
+        if cscan_col in cols:
+            cscan_idx = cols.index(cscan_col)
+            cols.remove(output_col)
+            cols.insert(cscan_idx + 1, output_col)
+            result_df = result_df[cols]
+        
+        return result_df
+    
+    def create_confusion_matrices_line3(self, df: pd.DataFrame, output_folder: str):
+        """Create confusion matrices for Line3 (both line2 and regular)"""
+        os.makedirs(output_folder, exist_ok=True)
+        
+        if 'line2_cscan_answer' in df.columns and 'qc_answer' in df.columns:
+            print("📊 Creating confusion matrix for line2_cscan_answer...")
+            output_path = os.path.join(output_folder, 'confusion_matrix_line2_acc.png')
+            self._create_confusion_matrix(
+                df, 'line2_cscan_answer', 'qc_answer',
+                output_path, 'Line2 CScan Answer vs Tester Answer'
+            )
+        
+        if 'cscan_answer' in df.columns and 'qc_answer' in df.columns:
+            print("📊 Creating confusion matrix for cscan_answer...")
+            output_path = os.path.join(output_folder, 'confusion_matrix_acc.png')
+            self._create_confusion_matrix(
+                df, 'cscan_answer', 'qc_answer',
+                output_path, 'CScan Answer vs Tester Answer'
+            )
+        
+        if 'line2_cscan_answer' in df.columns and 'new_line2_cscan_answer' in df.columns:
+            print("📊 Creating comparison confusion matrix for line2...")
+            output_path = os.path.join(output_folder, 'confusion_matrix_line2_comparison.png')
+            self._create_comparison_confusion_matrix(
+                df, output_folder,
+                predicted_col_before='line2_cscan_answer',
+                predicted_col_after='new_line2_cscan_answer',
+                actual_col='qc_answer',
+                output_filename='confusion_matrix_line2_comparison.png'
+            )
+        
+        if 'cscan_answer' in df.columns and 'new_cscan_answer' in df.columns:
+            print("📊 Creating comparison confusion matrix for line3...")
+            output_path = os.path.join(output_folder, 'confusion_matrix_comparison.png')
+            self._create_comparison_confusion_matrix(
+                df, output_folder,
+                predicted_col_before='cscan_answer',
+                predicted_col_after='new_cscan_answer',
+                actual_col='qc_answer',
+                output_filename='confusion_matrix_comparison.png'
+            )
+    
+    def reorder_columns_line3(self, df: pd.DataFrame, include_new_columns: bool = False) -> pd.DataFrame:
+        """Reorder columns for Line3 data (includes both line2_* and regular columns)"""
+        base_order = [
+            'line2_pdd_txn_id', 'pdd_txn_id',
+            'line2_top_uuid', 'line2_bottom_uuid', 'line2_right_uuid', 
+            'line2_left_uuid', 'line2_back_uuid', 'line2_front_uuid',
+            'line2_top_request_body', 'line2_bottom_request_body', 'line2_right_request_body',
+            'line2_left_request_body', 'line2_back_request_body', 'line2_front_request_body',
+            'line2_top_image_url', 'line2_bottom_image_url', 'line2_right_image_url',
+            'line2_left_image_url', 'line2_back_image_url', 'line2_front_image_url',
+            'line2_top_result_url', 'line2_bottom_result_url', 'line2_right_result_url',
+            'line2_left_result_url', 'line2_back_result_url', 'line2_front_result_url',
+            'line2_top_score', 'line2_bottom_score', 'line2_right_score',
+            'line2_left_score', 'line2_back_score', 'line2_front_score',
+            'top_uuid', 'bottom_uuid', 'right_uuid', 'left_uuid', 'back_uuid', 'front_uuid',
+            'top_request_body', 'bottom_request_body', 'right_request_body',
+            'left_request_body', 'back_request_body', 'front_request_body',
+            'top_image_url', 'bottom_image_url', 'right_image_url',
+            'left_image_url', 'back_image_url', 'front_image_url',
+            'top_result_url', 'bottom_result_url', 'right_result_url',
+            'left_result_url', 'back_result_url', 'front_result_url',
+            'top_score', 'bottom_score', 'right_score',
+            'left_score', 'back_score', 'front_score',
+            'quote_date', 'qc_answer', 'auditor_answer',
+            'line2_cscan_answer', 'line2_contributing_sides', 'line2_acc%',
+            'cscan_answer', 'contributing_sides', 'acc%',
+            'final_answer'
+        ]
+        
+        if include_new_columns:
+            new_columns = [
+                'new_line2_cscan_answer',
+                'new_line2_top_score', 'new_line2_bottom_score', 'new_line2_right_score',
+                'new_line2_left_score', 'new_line2_back_score', 'new_line2_front_score',
+                'new_line2_top_result_image_url', 'new_line2_bottom_result_image_url',
+                'new_line2_right_result_image_url', 'new_line2_left_result_image_url',
+                'new_line2_back_result_image_url', 'new_line2_front_result_image_url',
+                'new_line2_contributing_sides', 'new_line2_acc%',
+                'new_cscan_answer',
+                'new_top_score', 'new_bottom_score', 'new_right_score',
+                'new_left_score', 'new_back_score', 'new_front_score',
+                'new_top_result_image_url', 'new_bottom_result_image_url',
+                'new_right_result_image_url', 'new_left_result_image_url',
+                'new_back_result_image_url', 'new_front_result_image_url',
+                'new_contributing_sides', 'new_acc%'
+            ]
+            base_order.extend(new_columns)
+        
+        existing_ordered = [col for col in base_order if col in df.columns]
+        extra_cols = [col for col in df.columns if col not in existing_ordered]
+        final_order = existing_ordered + extra_cols
+        
+        return df[final_order]
+    
+    def generate_report_line3(
+        self,
+        raw_data_path: str,
+        output_folder: str,
+        eval_folder: Optional[str] = None,
+        include_eval: bool = True
+    ) -> str:
+        """
+        Generate complete analysis report for Line3 source
+        
+        Args:
+            raw_data_path: Path to raw data CSV
+            output_folder: Folder to save output files
+            eval_folder: Folder containing eval CSV files (optional)
+            include_eval: Whether to include eval results
+            
+        Returns:
+            Path to generated analysis CSV
+        """
+        # Step 1: Load raw data
+        print("\n📖 Step 1: Loading raw data CSV (Line3 format)...")
+        raw_df = self.load_raw_data_csv(raw_data_path, source="Cscanpro-Line3")
+        print(f"✅ Loaded {len(raw_df)} rows")
+        
+        # Step 2: Process Line3 data (dual queries)
+        print("\n🔄 Step 2: Processing Line3 data (dual queries)...")
+        joined_df = self.process_line3_data(raw_df)
+        
+        # Step 3: Create final_answer (for both line2 and regular)
+        print("\n🔍 Step 3: Creating final_answer column...")
+        # For Line3, final_answer uses qc_answer (tester_answer) since there's no auditor_answer
+        if 'qc_answer' in joined_df.columns:
+            joined_df['final_answer'] = joined_df['qc_answer']
+        else:
+            joined_df['final_answer'] = None
+        
+        # Step 4: Sort by quote_date BEFORE calculating acc%
+        if 'quote_date' in joined_df.columns:
+            print("\n📅 Step 4: Sorting by quote_date...")
+            joined_df = joined_df.sort_values(by='quote_date', na_position='last')
+        
+        # Step 5: Calculate accuracies
+        print("\n📊 Step 5: Calculating accuracies...")
+        # Calculate line2_acc% (line2_cscan_answer vs tester_answer)
+        if 'line2_cscan_answer' in joined_df.columns and 'qc_answer' in joined_df.columns:
+            joined_df = self.calculate_accuracy(joined_df, 'line2_cscan_answer', 'line2_acc%')
+        
+        # Calculate acc% (cscan_answer vs tester_answer)
+        if 'cscan_answer' in joined_df.columns and 'qc_answer' in joined_df.columns:
+            joined_df = self.calculate_accuracy(joined_df, 'cscan_answer', 'acc%')
+        
+        # Step 6: Create contributing_sides (for both line2 and regular)
+        print("\n🔍 Step 6: Creating contributing_sides columns...")
+        # For line2
+        if 'line2_cscan_answer' in joined_df.columns:
+            joined_df = self.create_contributing_sides_line3(joined_df, 'line2_cscan_answer', 'line2_contributing_sides', prefix='line2_')
+        
+        # For line3 (regular)
+        if 'cscan_answer' in joined_df.columns:
+            joined_df = self.create_contributing_sides(joined_df)
+        
+        # Step 7: Save UUID files (both line2_* and regular)
+        print("\n💾 Step 7: Saving UUID JSON files...")
+        os.makedirs(output_folder, exist_ok=True)
+        self.save_uuid_json_files_line3(joined_df, output_folder)
+        
+        # Step 8: Join with eval results (if available)
+        if include_eval and eval_folder:
+            print("\n🔗 Step 8: Joining with eval results...")
+            joined_df = self.join_with_eval_results(joined_df, eval_folder)
+            
+            # Step 9: Create new_cscan_answer (for both line2 and regular)
+            print("\n🔍 Step 9: Creating new_cscan_answer columns...")
+            # For line2
+            if 'line2_cscan_answer' in joined_df.columns:
+                joined_df = self.create_new_cscan_answer_line3(joined_df, 'line2_cscan_answer', 'new_line2_cscan_answer', prefix='line2_')
+                if 'new_line2_cscan_answer' in joined_df.columns:
+                    joined_df = self.calculate_accuracy(joined_df, 'new_line2_cscan_answer', 'new_line2_acc%')
+            
+            # For line3 (regular)
+            if 'cscan_answer' in joined_df.columns:
+                joined_df = self.create_new_cscan_answer(joined_df)
+                joined_df = self.calculate_accuracy(joined_df, 'new_cscan_answer', 'new_acc%')
+        
+        # Step 10: Create confusion matrices
+        print("\n📊 Step 10: Creating confusion matrices...")
+        try:
+            self.create_confusion_matrices_line3(joined_df, output_folder)
+        except Exception as e:
+            print(f"⚠️  Warning: Could not create confusion matrices: {e}")
+        
+        # Step 11: Reorder columns and save final CSV
+        print("\n💾 Step 11: Reordering columns and saving analysis CSV...")
+        joined_df = self.reorder_columns_line3(joined_df, include_new_columns=include_eval and eval_folder is not None)
+        
+        # Drop unwanted columns from Line3 source
+        columns_to_drop = [
+            'line1/2_source', 'line3_source', 'line1/2_txn_id', 'line3_txn_id',
+            'line1/2_variation', 'line_3_variation', 'tester_variation_id',
+            'line1/2_answer', 'line3_answer', 'tester_answer',
+            'Matched/Not Matched', 'Unnamed: 14',
+            'created_date', 'qr_code'
+        ]
+        # Drop columns that exist in the dataframe
+        existing_columns_to_drop = [col for col in columns_to_drop if col in joined_df.columns]
+        if existing_columns_to_drop:
+            print(f"🗑️  Dropping {len(existing_columns_to_drop)} unwanted columns: {existing_columns_to_drop}")
+            joined_df = joined_df.drop(columns=existing_columns_to_drop)
+        
+        os.makedirs(output_folder, exist_ok=True)
+        csv_filename = f"analysis_{datetime.now().strftime('%Y_%m_%d')}.csv"
+        csv_path = os.path.join(output_folder, csv_filename)
+        joined_df.to_csv(csv_path, index=False)
+        print(f"✅ Analysis CSV saved: {csv_path}")
+        
+        # Step 12: Ensure eval folder exists
+        eval_folder_path = os.path.join(output_folder, "eval")
+        os.makedirs(eval_folder_path, exist_ok=True)
+        with open(os.path.join(eval_folder_path, ".gitkeep"), 'w') as f:
+            f.write("")
+        
+        print("\n" + "=" * 60)
+        print("✅ Report Generation Complete (Line3)!")
         print("=" * 60)
         
         return csv_path
