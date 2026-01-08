@@ -814,6 +814,7 @@ class ReportGenerator:
         # Base column order (initial CSV)
         base_order = [
             'pdd_txn_id',
+            'image_timestamp',
             'top_uuid', 'bottom_uuid', 'right_uuid', 'left_uuid', 'back_uuid', 'front_uuid',
             'top_request_body', 'bottom_request_body', 'right_request_body', 
             'left_request_body', 'back_request_body', 'front_request_body',
@@ -1480,6 +1481,7 @@ class ReportGenerator:
         """Reorder columns for Line3 data (includes both line2_* and regular columns)"""
         base_order = [
             'line2_pdd_txn_id', 'pdd_txn_id',
+            'image_timestamp',
             'line2_top_uuid', 'line2_bottom_uuid', 'line2_right_uuid', 
             'line2_left_uuid', 'line2_back_uuid', 'line2_front_uuid',
             'line2_top_request_body', 'line2_bottom_request_body', 'line2_right_request_body',
