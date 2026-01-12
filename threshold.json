@@ -1,23 +1,23 @@
 {
   "physicalConditionPanel": {
     "top": {
-      "No Defect in Panel": [0, 40],
-      "Cracked or Broken Panel": [40, 80],
+      "No Defect in Panel": [0, 30],
+      "Cracked or Broken Panel": [30, 80],
       "Missing Panel": [80, 100]
     },
     "bottom": {
-      "No Defect in Panel": [0, 40],
-      "Cracked or Broken Panel": [40, 80],
+      "No Defect in Panel": [0, 35],
+      "Cracked or Broken Panel": [35, 80],
       "Missing Panel": [80, 100]
     },
     "left": {
-      "No Defect in Panel": [0, 60],
-      "Cracked or Broken Panel": [60,80],
+      "No Defect in Panel": [0, 40],
+      "Cracked or Broken Panel": [40,80],
       "Missing Panel": [80, 100]
     },
     "right": {
-      "No Defect in Panel": [0, 60],
-      "Cracked or Broken Panel": [60,80],
+      "No Defect in Panel": [0, 50],
+      "Cracked or Broken Panel": [50,80],
       "Missing Panel": [80, 100]
     },
     "back": {

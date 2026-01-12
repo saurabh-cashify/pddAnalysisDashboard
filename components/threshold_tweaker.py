@@ -27,6 +27,83 @@ from utils.threshold_handler import (
 from components.image_viewer import create_accordion_view, create_record_display_with_audit
 
 
+def validate_and_adjust_thresholds(side_thresholds: dict) -> dict:
+    """
+    Validate and adjust thresholds to ensure:
+    1. No gaps: thresholds cover entire 0-100 range continuously
+    2. No overlaps: each category's max equals next category's min
+    3. First category starts at 0, last category ends at 100
+    
+    Args:
+        side_thresholds: Dict mapping category names to [min, max] lists
+        
+    Returns:
+        Adjusted side_thresholds dict with validated thresholds
+    """
+    if not side_thresholds:
+        return side_thresholds
+    
+    # Get category order from dict keys (preserves insertion order from threshold.json)
+    categories = list(side_thresholds.keys())
+    
+    if len(categories) == 0:
+        return side_thresholds
+    
+    # Special case: only one category
+    if len(categories) == 1:
+        return {categories[0]: [0, 100]}
+    
+    # Create a copy to avoid modifying original
+    adjusted_thresholds = {}
+    
+    # Step 1: Ensure first category starts at 0
+    first_category = categories[0]
+    first_min, first_max = side_thresholds[first_category]
+    # Clamp first_max to valid range, but ensure it's at least 1
+    first_max = max(1, min(100, first_max))
+    adjusted_thresholds[first_category] = [0, first_max]
+    
+    # Step 2: Build continuous thresholds for middle categories
+    # Process from first to second-to-last category
+    for i in range(1, len(categories) - 1):
+        category = categories[i]
+        prev_category = categories[i-1]
+        
+        # Previous category's max becomes this category's min
+        prev_min, prev_max = adjusted_thresholds[prev_category]
+        adjusted_min = prev_max
+        
+        # Use original max from user's input, but ensure it's valid
+        original_min, original_max = side_thresholds[category]
+        # Adjusted max should be at least min + 1, and at most 100
+        # We'll let the last category handle the final adjustment
+        adjusted_max = max(adjusted_min + 1, min(100, original_max))
+        
+        adjusted_thresholds[category] = [int(adjusted_min), int(adjusted_max)]
+    
+    # Step 3: Ensure last category ends at 100
+    last_category = categories[-1]
+    prev_category = categories[-2]
+    
+    # Previous category's max becomes this category's min
+    prev_min, prev_max = adjusted_thresholds[prev_category]
+    adjusted_min = prev_max
+    
+    # Last category must end at 100
+    adjusted_max = 100
+    
+    # Ensure min < max
+    if adjusted_min >= adjusted_max:
+        # If previous category's max is >= 100, we need to adjust it
+        # Move the boundary back
+        adjusted_min = max(0, 99)
+        adjusted_thresholds[prev_category] = [adjusted_thresholds[prev_category][0], int(adjusted_min)]
+    
+    adjusted_thresholds[last_category] = [int(adjusted_min), 100]
+    
+    return adjusted_thresholds
+
+
 def create_threshold_tweaker_tab():
     """Create the Threshold Tweaker tab layout with Image Viewer-like UI/UX"""
     
@@ -731,6 +808,9 @@ def register_threshold_tweaker_callbacks(app):
         # Update thresholds based on slider IDs and values
         question_thresholds = adjusted_thresholds.get(question_name, {})
         
+        # Track which sides were modified
+        modified_sides = set()
+        
         for slider_id, slider_value in zip(slider_ids, slider_values):
             if slider_value is None or not isinstance(slider_value, list) or len(slider_value) != 2:
                 continue
@@ -752,6 +832,23 @@ def register_threshold_tweaker_callbacks(app):
             if side and category and side in question_thresholds:
                 if category in question_thresholds[side]:
                     question_thresholds[side][category] = [int(min_val), int(max_val)]
+                    modified_sides.add(side)
+        
+        # Validate and adjust thresholds for all modified sides
+        for side in modified_sides:
+            if side in question_thresholds:
+                original_thresholds = copy.deepcopy(question_thresholds[side])
+                validated_thresholds = validate_and_adjust_thresholds(question_thresholds[side])
+                question_thresholds[side] = validated_thresholds
+                
+                # Log if adjustments were made
+                if original_thresholds != validated_thresholds:
+                    print(f"✅ Validated and adjusted thresholds for {question_name}/{side}")
+                    for cat in validated_thresholds:
+                        orig = original_thresholds.get(cat, [0, 0])
+                        new = validated_thresholds[cat]
+                        if orig != new:
+                            print(f"   {cat}: {orig} → {new}")
         
         print(f"🔧 Updated thresholds for {question_name}")
         return adjusted_thresholds
