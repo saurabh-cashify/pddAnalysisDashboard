@@ -22,7 +22,8 @@ from utils.threshold_handler import (
     get_category_from_score,
     get_severity_order_from_thresholds,
     get_category_order_from_threshold,
-    normalize_category_for_confusion_matrix
+    normalize_category_for_confusion_matrix,
+    is_least_severe_category
 )
 from components.image_viewer import create_accordion_view, create_record_display_with_audit
 
@@ -479,6 +480,23 @@ def create_threshold_tweaker_tab():
                 html.P("Loading changed records...", className="text-center mt-3", style={"color": "#3b82f6"})
             ], className="text-center py-5")
         ]),
+        
+        # Image Modal (for expanded image view) - same as image viewer
+        dbc.Modal(
+            [
+                dbc.ModalHeader(dbc.ModalTitle("Image View")),
+                dbc.ModalBody([
+                    html.Img(id="modal-image", src="", style={"width": "100%", "height": "auto"})
+                ]),
+                dbc.ModalFooter([
+                    dbc.Button("Close", id="close-modal", className="ms-auto", n_clicks=0)
+                ])
+            ],
+            id="image-modal",
+            is_open=False,
+            size="xl",
+            centered=True
+        ),
         
     ], fluid=True, className="tab-content-container")
 
@@ -1773,10 +1791,13 @@ def register_threshold_tweaker_callbacks(app):
         severity_order = get_severity_order_from_thresholds(question_thresholds)
         sides = ['top', 'bottom', 'left', 'right', 'back', 'front']
         
-        # Recalculate (same logic as above)
+        # Recalculate adjusted answers and contributing sides
         adjusted_answers = []
+        adjusted_contributing_sides_list = []
+        
         for idx, row in df.iterrows():
-            side_categories = []
+            side_categories = []  # List of tuples: (side, category, score)
+            
             for side in sides:
                 if side not in question_thresholds:
                     continue
@@ -1789,22 +1810,37 @@ def register_threshold_tweaker_callbacks(app):
                 side_thresholds = question_thresholds[side]
                 category = get_category_from_score(float(score), side_thresholds)
                 if category:
-                    side_categories.append(category)
+                    side_categories.append((side, category, score))
             
+            # Calculate adjusted answer
             if not side_categories:
                 adjusted_answer = None
             else:
                 adjusted_answer = None
+                categories_only = [cat for _, cat, _ in side_categories]
                 for cat in severity_order:
-                    if cat in side_categories:
+                    if cat in categories_only:
                         adjusted_answer = cat
                         break
                 if not adjusted_answer:
-                    adjusted_answer = side_categories[0] if side_categories else None
+                    adjusted_answer = categories_only[0] if categories_only else None
             
             adjusted_answers.append(adjusted_answer)
+            
+            # Calculate adjusted contributing sides based on adjusted answer
+            if not adjusted_answer or pd.isna(adjusted_answer) or (isinstance(adjusted_answer, str) and not adjusted_answer.strip()):
+                adjusted_contributing_sides_list.append(None)
+            else:
+                # Check if adjusted_answer is the least severe category
+                if is_least_severe_category(adjusted_answer, question_name, threshold_config):
+                    adjusted_contributing_sides_list.append(None)
+                else:
+                    # Find all sides that match the adjusted_answer
+                    contributing_sides = [side for side, cat, _ in side_categories if cat == adjusted_answer]
+                    adjusted_contributing_sides_list.append(', '.join(contributing_sides) if contributing_sides else None)
         
         df[adjusted_answer_col] = adjusted_answers
+        df[f"adjusted_{score_prefix}contributing_sides" if score_prefix else "adjusted_contributing_sides"] = adjusted_contributing_sides_list
         
         # Find changed records and add score information
         changed_records = []
@@ -1816,17 +1852,30 @@ def register_threshold_tweaker_callbacks(app):
                 record_dict['original_answer'] = original
                 record_dict['adjusted_answer'] = adjusted
                 
-                # Add contributing sides scores (only for sides that contributed to the changed answer)
+                # Get adjusted contributing sides
+                adjusted_contrib_col = f"adjusted_{score_prefix}contributing_sides" if score_prefix else "adjusted_contributing_sides"
+                adjusted_contrib_sides_str = row.get(adjusted_contrib_col, '') or None
+                
+                # Update the answer column with adjusted value so table shows it
+                record_dict[original_answer_col] = adjusted
+                
+                # Update the contributing sides column with adjusted value so table shows it
+                if score_prefix:
+                    # For new model
+                    record_dict['new_contributing_sides'] = adjusted_contrib_sides_str if adjusted_contrib_sides_str else (row.get('new_contributing_sides', '') or '')
+                else:
+                    # For deployed model
+                    record_dict['contributing_sides'] = adjusted_contrib_sides_str if adjusted_contrib_sides_str else (row.get('contributing_sides', '') or '')
+                
+                # Add contributing sides scores (only for sides that contributed to the adjusted answer)
                 contributing_scores = []
                 contributing_sides_list = []
                 
-                # Get contributing sides from the record
-                contrib_sides_str = row.get('new_contributing_sides', '') or row.get('contributing_sides', '')
-                if contrib_sides_str:
-                    contrib_sides_list = [s.strip().lower() for s in str(contrib_sides_str).split(',') if s.strip()]
+                if adjusted_contrib_sides_str:
+                    contributing_sides_list = [s.strip().lower() for s in str(adjusted_contrib_sides_str).split(',') if s.strip()]
                     
                     # Only add scores for contributing sides
-                    for side in contrib_sides_list:
+                    for side in contributing_sides_list:
                         score_col = f"{score_prefix}{side}_score"
                         if score_col in df.columns:
                             score = row[score_col]
@@ -1834,7 +1883,6 @@ def register_threshold_tweaker_callbacks(app):
                                 contributing_scores.append(f"{side}: {score:.2f}")
                 
                 record_dict['contributing_scores'] = ", ".join(contributing_scores) if contributing_scores else "N/A"
-                record_dict['contributing_sides'] = contrib_sides_str if contrib_sides_str else "N/A"
                 
                 changed_records.append(record_dict)
         
