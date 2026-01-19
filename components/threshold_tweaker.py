@@ -506,7 +506,6 @@ def register_threshold_tweaker_callbacks(app):
         
         trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
         if trigger_id in ["optimize-all-thresholds-btn", "optimize-selected-side-btn"]:
-            print(f"📊 Showing optimization loader for {trigger_id}")
             return {"display": "flex", "alignItems": "center", "gap": "10px"}
         
         return {"display": "none"}
@@ -527,10 +526,8 @@ def register_threshold_tweaker_callbacks(app):
         trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
         
         if trigger_id == "tweaker-old-model-btn":
-            print("🔄 Switched to Deployed Model")
             return "old"
         else:
-            print("🔄 Switched to New Model")
             return "new"
     
     # Update model toggle button states based on model store
@@ -617,7 +614,6 @@ def register_threshold_tweaker_callbacks(app):
         sides = ['back', 'left', 'right', 'top', 'bottom', 'front']
         active_states = [s == selected_side for s in sides]
         
-        print(f"🎯 Selected side: {selected_side}")
         return selected_side, active_states
     
     # Initialize matrices on first load (only when tweaker tab is active)
@@ -712,15 +708,12 @@ def register_threshold_tweaker_callbacks(app):
         question_name = None
         if data and isinstance(data, dict) and 'question_name' in data:
             question_name = data['question_name']
-            if question_name:
-                print(f"✓ load_threshold_sliders: Using question_name from data-store: {question_name}")
         
         # Fallback: detect from threshold_config if not in data-store
         if not question_name:
             for key in threshold_config.keys():
                 if 'physicalcondition' in key.lower():
                     question_name = key
-                    print(f"⚠️ load_threshold_sliders: Question name not in data-store, detected from threshold_config: {question_name}")
                     break
         
         if not question_name:
@@ -845,17 +838,7 @@ def register_threshold_tweaker_callbacks(app):
                 original_thresholds = copy.deepcopy(question_thresholds[side])
                 validated_thresholds = validate_and_adjust_thresholds(question_thresholds[side])
                 question_thresholds[side] = validated_thresholds
-                
-                # Log if adjustments were made
-                if original_thresholds != validated_thresholds:
-                    print(f"✅ Validated and adjusted thresholds for {question_name}/{side}")
-                    for cat in validated_thresholds:
-                        orig = original_thresholds.get(cat, [0, 0])
-                        new = validated_thresholds[cat]
-                        if orig != new:
-                            print(f"   {cat}: {orig} → {new}")
         
-        print(f"🔧 Updated thresholds for {question_name}")
         return adjusted_thresholds
     
     # Update threshold value display text
@@ -961,8 +944,6 @@ def register_threshold_tweaker_callbacks(app):
         elif trigger_id in ["optimize-all-thresholds-btn", "optimize-selected-side-btn"]:
             # Show loading indicator immediately
             loading_style = {"display": "flex", "alignItems": "center", "gap": "10px"}
-            print(f"🔄 Starting optimization for {'selected side' if trigger_id == 'optimize-selected-side-btn' else 'all sides'} (Model: {model})")
-            
             if not threshold_config or not data:
                 loading_style = {"display": "none"}
                 return no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, loading_style
@@ -988,7 +969,6 @@ def register_threshold_tweaker_callbacks(app):
             if trigger_id == "optimize-selected-side-btn":
                 optimize_side = selected_side
                 if not optimize_side:
-                    print("⚠️ No side selected for optimization")
                     loading_style = {"display": "none"}
                     return no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, loading_style
             
@@ -1000,14 +980,14 @@ def register_threshold_tweaker_callbacks(app):
             
             # Optimize thresholds (this may take time)
             try:
-                print(f"⚙️ Running optimization algorithm...")
                 optimized_thresholds = optimize_thresholds_for_accuracy(
                     data, threshold_config, adjusted_thresholds, question_name, model, optimize_side
                 )
                 adjusted_thresholds = optimized_thresholds
-                print(f"✅ Optimization complete! Updated thresholds for {question_name}")
             except Exception as e:
+                import traceback
                 print(f"❌ Error during optimization: {e}")
+                print(traceback.format_exc())
                 import traceback
                 traceback.print_exc()
                 loading_style = {"display": "none"}
@@ -1020,7 +1000,6 @@ def register_threshold_tweaker_callbacks(app):
         # This ensures matrices update when switching between Deployed and New models
         if trigger_id == "tweaker-model-store":
             # Model changed - proceed to recalculate matrices with new model
-            print(f"🔄 Model store changed to: {model}")
             # Initialize adjusted_thresholds if not set
             if not adjusted_thresholds and threshold_config:
                 adjusted_thresholds = copy.deepcopy(threshold_config)
@@ -1038,15 +1017,12 @@ def register_threshold_tweaker_callbacks(app):
         question_name = None
         if data and isinstance(data, dict) and 'question_name' in data:
             question_name = data['question_name']
-            if question_name:
-                print(f"✓ Using question_name from data-store: {question_name}")
         
         # Fallback: detect from threshold_config if not in data-store
         if not question_name:
             for key in threshold_config.keys():
                 if 'physicalcondition' in key.lower():
                     question_name = key
-                    print(f"⚠️ Question name not in data-store, detected from threshold_config: {question_name}")
                     break
         
         if not question_name:
@@ -1238,12 +1214,8 @@ def register_threshold_tweaker_callbacks(app):
         if reference_matrix_data.get('labels') and adjusted_matrix_data.get('labels'):
             ref_labels = reference_matrix_data['labels']
             adj_labels = adjusted_matrix_data['labels']
-            print(f"📊 Reference matrix labels ({len(ref_labels)}): {ref_labels}")
-            print(f"📊 Adjusted matrix labels ({len(adj_labels)}): {adj_labels}")
             if ref_labels != adj_labels:
-                print(f"⚠️ WARNING: Label orders don't match!")
-            else:
-                print(f"✓ Label orders match")
+                print(f"⚠️ WARNING: Label orders don't match between reference and adjusted matrices!")
         
         # Create plots as Dash Graph components
         reference_fig = create_confusion_matrix_plot(reference_matrix_data, f"ref-{question_name}", "Reference Matrix")

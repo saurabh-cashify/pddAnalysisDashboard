@@ -1037,7 +1037,6 @@ def register_image_viewer_callbacks(app):
     def reset_viewer_on_tab_switch(active_tab, data):
         """Reset all filters and state when switching to viewer tab"""
         if active_tab == "viewer":
-            print("🔄 Switching to Image Viewer tab - resetting all filters and state")
             # Ensure data is in the correct format for filtered-data-store
             if data and isinstance(data, dict):
                 filtered_data = data  # Use data as-is (already in correct format)
@@ -1081,7 +1080,6 @@ def register_image_viewer_callbacks(app):
         """Sync filter values from matrix click stores to dropdown components"""
         # Only sync if values are not empty (matrix click happened)
         if cscan_filter or new_cscan_filter or final_filter:
-            print(f"📥 Syncing matrix filters to dropdowns: cscan={cscan_filter}, new_cscan={new_cscan_filter}, final={final_filter}")
             return cscan_filter or [], new_cscan_filter or [], final_filter or []
         from dash import no_update
         return no_update, no_update, no_update
@@ -1096,10 +1094,7 @@ def register_image_viewer_callbacks(app):
     def populate_filter_dropdowns(data):
         """Populate filter dropdowns when data is loaded"""
         
-        print(f"📋 populate_filter_dropdowns called")
-        
         if not data or not isinstance(data, dict):
-            print("   ⚠️ No data or not a dict")
             return [], [], []
         
         # Extract data records
@@ -1109,10 +1104,7 @@ def register_image_viewer_callbacks(app):
             records = data if isinstance(data, list) else []
         
         if not records:
-            print("   ⚠️ No records in data")
             return [], [], []
-        
-        print(f"   ✓ Found {len(records)} records")
         
         # Collect unique values
         cscan_answers = set()
@@ -1131,8 +1123,6 @@ def register_image_viewer_callbacks(app):
         cscan_options = [{"label": str(v), "value": str(v)} for v in sorted(cscan_answers)]
         new_cscan_options = [{"label": str(v), "value": str(v)} for v in sorted(new_cscan_answers)]
         final_options = [{"label": str(v), "value": str(v)} for v in sorted(final_answers)]
-        
-        print(f"   ✅ Populated options: {len(cscan_options)} cscan, {len(new_cscan_options)} new_cscan, {len(final_options)} final")
         
         return cscan_options, new_cscan_options, final_options
     
@@ -1184,13 +1174,10 @@ def register_image_viewer_callbacks(app):
         
         # Reset filters - clear all dropdown values and reset data
         if trigger_id == "reset-filters-btn":
-            print("🔄 Reset filters clicked - clearing all filter values")
             return data, 0, [], [], [], [], [], [], [0, 100], [], [0, 100]  # 11 outputs: data, page, 5 filters, deployed_side_score_filter, deployed_score_range, new_side_score_filter, new_score_range
         
         # If triggered by matrix click, use matrix filter stores instead of dropdown values
         if trigger_id == "matrix-click-trigger" and matrix_trigger and matrix_trigger > 0:
-            print(f"🔍 Applying filters from matrix click")
-            print(f"   Using matrix filter stores: cscan={matrix_cscan_filter}, new_cscan={matrix_new_cscan_filter}, final={matrix_final_filter}")
             # Use matrix filter stores (these are already normalized)
             cscan_filter = matrix_cscan_filter if matrix_cscan_filter else []
             new_cscan_filter = matrix_new_cscan_filter if matrix_new_cscan_filter else []
@@ -1560,7 +1547,9 @@ def register_image_viewer_callbacks(app):
                     new_state = 'input' if current_state == 'result' else 'result'
                     record_state[clicked_side] = new_state
             except Exception as e:
-                print(f"Error updating toggle state: {e}")
+                import traceback
+                print(f"❌ Error updating toggle state: {e}")
+                print(traceback.format_exc())
         
         return current_states
     
@@ -1607,8 +1596,6 @@ def register_image_viewer_callbacks(app):
                 side = trigger_dict.get('side')
                 version = trigger_dict.get('version')
                 record_id = trigger_dict.get('record_id')
-                
-                print(f"🖼️ toggle_image_modal: Image clicked. active_tab={active_tab}, side={side}, version={version}, record_id={record_id}")
                 
                 # Try to get records based on active tab, then fallback
                 records = None
@@ -1677,7 +1664,6 @@ def register_image_viewer_callbacks(app):
                             records = tweaker_changed_records_data
                 
                 if not records:
-                    print(f"⚠️ toggle_image_modal: No records found. active_tab={active_tab}, record_id={record_id}")
                     return False, ""
                 
                 # Find record by matching pdd_txn_id
@@ -1688,11 +1674,6 @@ def register_image_viewer_callbacks(app):
                         break
                 
                 if record is None:
-                    print(f"⚠️ toggle_image_modal: Record not found. record_id={record_id}, total_records={len(records)}, active_tab={active_tab}")
-                    # Debug: print first few record IDs
-                    if records:
-                        sample_ids = [str(r.get('pdd_txn_id', 'N/A')) for r in records[:3]]
-                        print(f"   Sample record IDs: {sample_ids}")
                     return False, ""
                 
                 # Get the correct URL - use record-specific state
@@ -1731,10 +1712,8 @@ def register_image_viewer_callbacks(app):
                         url = record.get(f'{side}_result_url', '')
                 
                 if url:
-                    print(f"✅ toggle_image_modal: Opening image. active_tab={active_tab}, side={side}, version={version}, record_id={record_id}, mode={current_mode}")
                     return True, url
                 else:
-                    print(f"⚠️ toggle_image_modal: No URL found. side={side}, version={version}, record_id={record_id}, mode={current_mode}")
                     return False, ""
             except Exception as e:
                 import traceback

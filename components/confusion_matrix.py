@@ -273,13 +273,7 @@ def register_confusion_matrix_callbacks(app):
     def update_confusion_matrices(data, threshold_config):
         """Generate and display confusion matrices - same pattern as Image Viewer"""
         
-        print(f"\n{'='*60}")
-        print(f"📊 Confusion Matrix callback triggered")
-        print(f"   Data Type: {type(data)}")
-        print(f"{'='*60}")
-        
         if not data or not isinstance(data, dict):
-            print("   ⚠️ No data or not a dict")
             return html.Div([
                 html.Div([
                     html.H4("No data loaded", className="text-muted text-center"),
@@ -290,13 +284,9 @@ def register_confusion_matrix_callbacks(app):
         # Extract records
         if "data" in data:
             records = data["data"]
-            print(f"   ✓ Found {len(records)} records in data dict")
         else:
             records = data if isinstance(data, list) else []
-            print(f"   ⚠️ Data is not a dict with 'data' key")
-        
         if not records:
-            print("   ⚠️ No records to display")
             return html.Div([
                 html.Div([
                     html.H4("No data available", className="text-muted text-center"),
@@ -339,14 +329,10 @@ def register_confusion_matrix_callbacks(app):
                         break
         
         if not question_name:
-            print(f"   ⚠️ Could not detect question name, using default")
             question_name = 'default'
-        
-        print(f"   ✓ Detected question name: {question_name}")
         
         # Check if we have new model data
         has_new_data = 'new_cscan_answer' in df.columns and df['new_cscan_answer'].notna().any()
-        print(f"   ✓ Has new model data: {has_new_data}")
         
         # Prepare matrix data using the same function as report generation
         try:
@@ -377,7 +363,6 @@ def register_confusion_matrix_callbacks(app):
                 ], className="py-5")
             ])
         
-        print(f"   ✅ Generated confusion matrix with {len(old_matrix_data['labels'])} categories, accuracy: {old_matrix_data['accuracy']:.2f}%")
         
         # Create matrices display
         if has_new_data:
@@ -395,7 +380,6 @@ def register_confusion_matrix_callbacks(app):
                 new_matrix_data = None
             
             if new_matrix_data and new_matrix_data.get('labels'):
-                print(f"   ✅ New matrix generated, creating two-column layout")
                 # Two column layout
                 return dbc.Row([
                     dbc.Col([
@@ -468,7 +452,6 @@ def register_confusion_matrix_callbacks(app):
                 ], className="g-4")
         
         # Single matrix layout
-        print(f"   ✅ Creating single matrix layout")
         return dbc.Row([
             dbc.Col([
                 dbc.Card([

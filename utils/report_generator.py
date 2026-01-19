@@ -87,7 +87,6 @@ class ReportGenerator:
                 try:
                     raw_df = pd.read_csv(csv_path, encoding=enc, sep=delim)
                     if len(raw_df.columns) > 1:
-                        print(f"✅ Loaded CSV with encoding: {enc}, delimiter: '{delim}'")
                         break
                 except Exception:
                     continue
@@ -99,7 +98,6 @@ class ReportGenerator:
             for enc in encodings:
                 try:
                     raw_df = pd.read_csv(csv_path, encoding=enc, sep=None, engine='python')
-                    print(f"✅ Loaded CSV with encoding: {enc}, auto-detected delimiter")
                     break
                 except Exception:
                     continue
@@ -142,7 +140,6 @@ class ReportGenerator:
         }
         
         # Trigger query execution
-        print("🔄 Running query on Redash...")
         run_url = f"{self.base_url}/api/queries/{self.query_id}/results"
         headers = {"Authorization": f"Key {self.api_key}", "Content-Type": "application/json"}
         
@@ -157,7 +154,6 @@ class ReportGenerator:
         
         # Handle cached results or job polling
         if "query_result" in run_response:
-            print("✅ Query result available immediately (cached).")
             query_result = run_response["query_result"]
             data_rows = query_result["data"]["rows"]
             columns = query_result["data"]["columns"]
@@ -168,8 +164,6 @@ class ReportGenerator:
                 raise Exception(f"❌ Could not start job. Response: {run_response}")
             
             job_id = job["id"]
-            print(f"⏳ Query started. Job ID: {job_id}")
-            
             status_url = f"{self.base_url}/api/jobs/{job_id}"
             while True:
                 status_resp = requests.get(status_url, headers=headers)
@@ -177,18 +171,15 @@ class ReportGenerator:
                 
                 state = status["job"]["status"]
                 if state == 3:  # success
-                    print("✅ Query completed.")
                     query_result_id = status["job"]["query_result_id"]
                     break
                 elif state == 4:  # failed
                     raise Exception(f"❌ Query failed. Details: {status}")
                 else:
-                    print("⏳ Still running... waiting 3s")
                     time.sleep(3)
             
             # Fetch results
             results_url = f"{self.base_url}/api/query_results/{query_result_id}.json?api_key={self.api_key}"
-            print("📥 Fetching latest results...")
             results_resp = requests.get(results_url)
             results = results_resp.json()
             
@@ -204,7 +195,6 @@ class ReportGenerator:
         column_order = [col["name"] for col in columns]
         df = df[column_order]
         
-        print(f"📊 Redash query returned {len(df)} rows")
         return df
     
     def join_with_raw_data(self, redash_df: pd.DataFrame, raw_df: pd.DataFrame) -> pd.DataFrame:
@@ -226,7 +216,6 @@ class ReportGenerator:
         input_join_data = raw_df[['pdd_txn_id'] + columns_to_add].copy()
         joined_df = redash_df.merge(input_join_data, on='pdd_txn_id', how='left')
         
-        print(f"✅ Join completed. Final dataset: {len(joined_df)} rows")
         return joined_df
     
     def create_final_answer_column(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -464,19 +453,13 @@ class ReportGenerator:
             print(f"⚠️  No CSV files found in eval folder")
             return df
         
-        print(f"📊 Found {len(eval_files)} eval CSV files")
-        
         # Pre-process: Remove rows with missing UUIDs from eval CSVs
-        print(f"🔍 Pre-processing eval CSVs - removing rows with missing UUIDs...")
-        
         new_columns = {}
         processed_uuids = set()
         side_match_counts = {}
         
         for eval_file in eval_files:
             eval_path = os.path.join(eval_folder, eval_file)
-            print(f"📖 Processing: {eval_file}")
-            
             try:
                 eval_df = pd.read_csv(eval_path)
                 required_cols = ['image_uuid', 'score', 'result_image_url']
@@ -570,8 +553,6 @@ class ReportGenerator:
             for idx, value in values.items():
                 result_df.at[idx, col_name] = value
         
-        print(f"✅ Added {len(new_columns)} eval columns")
-        
         # Identify which sides have eval data (from side_match_counts or new_columns)
         sides_with_eval_data = set(side_match_counts.keys())
         
@@ -583,14 +564,11 @@ class ReportGenerator:
                     if side in ['top', 'bottom', 'left', 'right', 'back', 'front']:
                         sides_with_eval_data.add(side)
         
-        print(f"📊 Sides with eval data: {sorted(sides_with_eval_data)}")
-        
         # For sides without eval data, copy from deployed values
         all_sides = ['top', 'bottom', 'left', 'right', 'back', 'front']
         sides_without_eval = [side for side in all_sides if side not in sides_with_eval_data]
         
         if sides_without_eval:
-            print(f"📋 Sides without eval data (will use deployed values): {sorted(sides_without_eval)}")
             for side in sides_without_eval:
                 deployed_score_col = f"{side}_score"
                 deployed_url_col = f"{side}_result_url"
@@ -600,15 +578,15 @@ class ReportGenerator:
                 # Check if deployed columns exist
                 if deployed_score_col in result_df.columns:
                     result_df[new_score_col] = result_df[deployed_score_col]
-                    print(f"   ✓ Copied {deployed_score_col} → {new_score_col}")
+                    pass
                 else:
-                    print(f"   ⚠️  {deployed_score_col} not found, skipping")
+                    pass
                 
                 if deployed_url_col in result_df.columns:
                     result_df[new_url_col] = result_df[deployed_url_col]
-                    print(f"   ✓ Copied {deployed_url_col} → {new_url_col}")
+                    pass
                 else:
-                    print(f"   ⚠️  {deployed_url_col} not found, skipping")
+                    pass
         
         # Post-processing: Remove rows where required UUIDs are missing/empty
         # Identify which sides have new scores (these are the sides we need UUIDs for)
@@ -620,8 +598,6 @@ class ReportGenerator:
         
         if sides_with_new_scores:
             initial_count = len(result_df)
-            print(f"\n🔍 Post-processing: Checking for missing UUIDs in sides: {sides_with_new_scores}")
-            
             # Filter: Keep rows where ALL required UUIDs are present and not empty
             for side in sides_with_new_scores:
                 uuid_col = f"{side}_uuid"
@@ -632,8 +608,8 @@ class ReportGenerator:
             
             removed_count = initial_count - len(result_df)
             if removed_count > 0:
-                print(f"   ⚠️  Removed {removed_count} rows with missing/empty UUIDs for eval sides")
-                print(f"   ✓ Remaining rows: {len(result_df)}")
+                if removed_count > 0:
+                    print(f"⚠️  Removed {removed_count} rows with missing/empty UUIDs for eval sides")
         
         return result_df
     
@@ -1116,29 +1092,23 @@ class ReportGenerator:
             filtered_count = initial_count - len(raw_df)
             
             if filtered_count > 0:
-                print(f"🗑️  Filtered out {filtered_count} rows with 'Not Checked' in answer columns")
-                print(f"   Remaining rows: {len(raw_df)}")
-            else:
-                print(f"   ✓ No rows with 'Not Checked' found")
+                if filtered_count > 0:
+                    print(f"⚠️  Filtered out {filtered_count} rows with 'Not Checked' in answer columns")
         
         # Step 1: Extract line1/2_txn_id and run query
-        print("\n📋 Step 1: Processing line1/2_txn_id...")
         line2_txn_ids = raw_df['line1/2_txn_id'].dropna().unique().tolist()
-        print(f"✅ Found {len(line2_txn_ids)} unique line1/2_txn_id values")
         
         if len(line2_txn_ids) > 0:
             # Execute query for line2
             BATCH_SIZE = 3000
             if len(line2_txn_ids) > BATCH_SIZE:
-                print(f"⚠️  Found {len(line2_txn_ids)} IDs (exceeds limit of {BATCH_SIZE})")
-                print(f"📦 Splitting into batches...")
+                print(f"⚠️  Found {len(line2_txn_ids)} IDs (exceeds limit of {BATCH_SIZE}), splitting into batches")
                 batches = []
                 for i in range(0, len(line2_txn_ids), BATCH_SIZE):
                     batches.append(line2_txn_ids[i:i + BATCH_SIZE])
                 
                 all_results = []
                 for batch_num, batch in enumerate(batches, 1):
-                    print(f"🔄 Processing line2 batch {batch_num}/{len(batches)}...")
                     batch_df = self.execute_redash_query(batch)
                     all_results.append(batch_df)
                 

@@ -300,7 +300,6 @@ def register_report_generation_callbacks(app):
     def reset_data_store(n_clicks):
         """Clear data-store when reset button is clicked"""
         if n_clicks and n_clicks > 0:
-            print("🔄 Reset Data button clicked - clearing data-store")
             return {}
         from dash import no_update
         return no_update
@@ -417,7 +416,6 @@ def register_report_generation_callbacks(app):
             
             # Handle folder update mode (folder with analysis CSV + eval + threshold.json)
             if use_folder_update:
-                print("\n📁 Folder Update Mode: Processing uploaded folder...")
                 # Will process folder contents below
                 pass
             
@@ -429,7 +427,6 @@ def register_report_generation_callbacks(app):
                 analysis_csv_path = os.path.join(temp_dir, analysis_csv_filename)
                 with open(analysis_csv_path, 'wb') as f:
                     f.write(decoded)
-                print(f"📄 Direct analysis CSV saved: {analysis_csv_path}")
             
             # Handle generation mode
             elif use_generation:
@@ -439,15 +436,12 @@ def register_report_generation_callbacks(app):
                 temp_raw_file = os.path.join(temp_dir, raw_data_filename)
                 with open(temp_raw_file, 'wb') as f:
                     f.write(decoded)
-                print(f"📄 Raw data CSV saved: {temp_raw_file}")
             
             # Process analysis folder if provided (folder with multiple files)
             eval_path = None
             
             if eval_folder_contents and isinstance(eval_folder_contents, list):
                 # Multiple files uploaded (folder contents)
-                print(f"\n📁 Processing uploaded folder with {len(eval_folder_contents)} files")
-                print(f"   📋 Filenames received: {eval_folder_filename[:5]}...")  # Debug: show first 5 filenames
                 eval_extract_path = os.path.join(temp_dir, "uploaded_folder")
                 os.makedirs(eval_extract_path, exist_ok=True)
                 
@@ -458,11 +452,6 @@ def register_report_generation_callbacks(app):
                         continue
                     
                     try:
-                        # Debug: Show actual filename received
-                        if idx < 3:  # Show first 3 filenames in detail
-                            print(f"   🔍 Processing file #{idx}: '{fname}'")
-                            print(f"      Has path separator: {'/' in fname}")
-                        
                         content_type, content_string = content.split(',')
                         decoded = base64.b64decode(content_string)
                         
@@ -472,13 +461,8 @@ def register_report_generation_callbacks(app):
                         
                         with open(file_path, 'wb') as f:
                             f.write(decoded)
-                        
-                        if idx < 3:
-                            print(f"   ✓ Saved to: {file_path}")
-                        elif idx == len(eval_folder_contents) - 1:
-                            print(f"   ✓ Saved {len(eval_folder_contents)} files total")
                     except Exception as e:
-                        print(f"   ⚠️  Error saving {fname}: {e}")
+                        print(f"⚠️  Error saving {fname}: {e}")
                         continue
                 
                 # Look for eval folder, analysis CSV, and threshold.json
@@ -487,28 +471,20 @@ def register_report_generation_callbacks(app):
                 found_threshold_json = None
                 eval_csv_files = []  # Track eval CSV files
                 
-                print(f"\n🔍 Scanning uploaded folder structure...")
                 for root, dirs, files in os.walk(eval_extract_path):
-                    print(f"   📁 Checking directory: {os.path.relpath(root, eval_extract_path)}")
-                    print(f"      Subdirs: {dirs}")
-                    print(f"      Files: {files[:5]}...")  # Show first 5 files
-                    
                     # Look for 'eval' subfolder
                     if 'eval' in dirs:
                         eval_csv_folder = os.path.join(root, 'eval')
-                        print(f"   ✓ Found eval folder: {eval_csv_folder}")
                     
                     # Check for files at root level
                     for file in files:
                         # Look for analysis CSV (only in folder update mode)
                         if file.startswith('analysis_') and file.endswith('.csv') and use_folder_update:
                             found_analysis_csv = os.path.join(root, file)
-                            print(f"   ✓ Found analysis CSV: {file}")
                         
                         # Look for threshold.json
                         if file.lower() == 'threshold.json':
                             found_threshold_json = os.path.join(root, file)
-                            print(f"   ✓ Found threshold.json: {file}")
                         
                         # Track CSV files that might be eval results (numeric names)
                         if file.endswith('.csv') and not file.startswith('analysis_'):
@@ -519,48 +495,36 @@ def register_report_generation_callbacks(app):
                 
                 # If no eval folder but we have numeric CSV files, create a synthetic eval folder
                 if not eval_path and eval_csv_files:
-                    print(f"   ℹ️  No 'eval' subfolder found, but found {len(eval_csv_files)} CSV files")
-                    
                     # Check if CSV files are in a subfolder
                     for csv_file in eval_csv_files:
                         csv_dir = os.path.dirname(csv_file)
                         if csv_dir != eval_extract_path:
                             # CSVs are in a subfolder
                             eval_path = csv_dir
-                            print(f"   ✓ Using CSV location as eval folder: {eval_path}")
                             break
                     
                     # If all CSVs are at root level, infer they're eval CSVs and move them to eval folder
                     if not eval_path and use_folder_update:
-                        print(f"   🔧 Creating synthetic eval folder and moving CSV files...")
                         synthetic_eval_path = os.path.join(eval_extract_path, "eval")
                         os.makedirs(synthetic_eval_path, exist_ok=True)
                         
                         # Move numeric CSV files to eval folder
                         import shutil
-                        moved_count = 0
                         for csv_file in eval_csv_files:
                             if os.path.dirname(csv_file) == eval_extract_path:
                                 # File is at root, move to eval
                                 new_path = os.path.join(synthetic_eval_path, os.path.basename(csv_file))
                                 shutil.move(csv_file, new_path)
-                                moved_count += 1
                         
                         eval_path = synthetic_eval_path
-                        print(f"   ✓ Moved {moved_count} CSV files to synthetic eval folder: {eval_path}")
                 
                 # In folder update mode, use found analysis CSV
                 if use_folder_update and found_analysis_csv:
                     analysis_csv_path = found_analysis_csv
-                    print(f"   → Using analysis CSV from folder: {analysis_csv_path}")
                 
                 # Use found threshold.json if available
                 if found_threshold_json:
                     uploaded_threshold_json = found_threshold_json
-                    print(f"   → Using threshold.json from folder: {uploaded_threshold_json}")
-                
-                print(f"   → Eval path: {eval_path}")
-                print(f"   → Analysis CSV: {analysis_csv_path if analysis_csv_path else 'None (will be generated)'}")
             
             # Create output folder structure in temp
             output_folder_name = output_folder or f"analysis_{datetime.now().strftime('%Y_%m_%d')}"
@@ -572,7 +536,6 @@ def register_report_generation_callbacks(app):
             if use_folder_update:
                 # Folder update mode: load analysis CSV, join with eval, create new_cscan_answer
                 import shutil
-                print("\n🔄 Folder Update Mode: Joining with eval results...")
                 
                 # Initialize generator with uploaded threshold if available
                 generator = ReportGenerator(
