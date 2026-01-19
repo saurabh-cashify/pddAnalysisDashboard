@@ -18,6 +18,8 @@ This is a comprehensive analysis dashboard for Physical Condition Detection (Scr
    - Creates confusion matrix PNG images with date-based titles
    - Output folder naming: `analysis_YYYY_MM_DD` (date-based only)
    - Reset Data button to clear loaded data
+   - Support for direct analysis CSV upload (folder update mode)
+   - Automatic threshold.json detection from uploaded folders
 
 2. **📈 Analytics Tab**
    - Performance Overview Cards (Total Records, Accuracy, Agreement Rate)
@@ -48,11 +50,21 @@ This is a comprehensive analysis dashboard for Physical Condition Detection (Scr
      - Deployed Side Score Filter (range slider + side multiselect)
      - New Side Score Filter (range slider + side multiselect)
    - Record navigation (First, Previous, Next, Last) with pagination
-   - 6-side image display (top, bottom, left, right, back, front)
+   - Smart Image Tab Display**: Only shows tabs for sides that have valid image URLs
+     - Checks for `top_image_url`, `bottom_image_url`, `right_image_url`, `left_image_url`, `back_image_url`, `front_image_url`
+     - If only `front_image_url` exists, only the front image tab is displayed
+   - Front Black Image Support**: 
+     - Displays both front and front_black images side-by-side when input toggle is active
+     - Shows `front_black_image_url` and `front_black_uuid` alongside front images
+     - Both images are clickable and open in expanded modal view
    - Image toggle (input vs result images) - record-specific
    - Side-by-side comparison (deployed vs new model)
    - Single image view (when only deployed model available)
-   - Image expansion on click (modal view)
+   - Image Expansion Modal with Gamma Adjustment**:
+     - Click any image to open in full-size modal
+     - Gamma adjustment slider (0.1 to 3.0) in modal header
+     - Real-time gamma correction using canvas-based processing
+     - CSS filter fallback for CORS-restricted images
    - Expandable/collapsible rows for detailed view
    - Score badges with color coding
    - Copy Request Body button for each side
@@ -64,6 +76,8 @@ This is a comprehensive analysis dashboard for Physical Condition Detection (Scr
    - All filters from Image Viewer (same functionality)
    - Inline record viewer with expandable rows
    - Image gallery with toggle (input vs result)
+   - Front Black Image Support**: Same as Image Viewer
+   - Gamma Adjustment: Available in expanded image modal
    - Image expansion on click (modal view)
    - Answer comparison
    - Export Audit CSV functionality
@@ -74,6 +88,7 @@ This is a comprehensive analysis dashboard for Physical Condition Detection (Scr
    - Model toggle (Deployed Model vs New Model)
    - Reference matrix (static baseline) with dynamic headers
    - Live-adjusted matrix with change highlighting
+   - Side Selection: Back, Left, Right, Top, Bottom, Front (all 6 sides supported)
    - Side-specific threshold range sliders (integer values only)
    - Real-time impact calculation (Records Changed, Accuracy Delta, Original Accuracy)
    - Changed records viewer with full filtering capabilities
@@ -83,6 +98,7 @@ This is a comprehensive analysis dashboard for Physical Condition Detection (Scr
    - Reset to Original button
    - Dynamic question name detection from report generation
    - Category ordering from threshold.json
+   - Gamma Adjustment: Available in expanded image modal
 
 ## Installation
 
@@ -125,6 +141,13 @@ The dashboard has 6 tabs in the following order:
 1. **Question Name**: Select from dropdown (options from `threshold.json`):
    - `physicalConditionScratch`
    - `physicalConditionPanel`
+   - `physicalConditionDent`
+   - `screenPhysicalCondition`
+   - `screenDisplaySpot`
+   - `screenBubblePaint`
+   - `screenDisplayLines`
+   - `screenDiscoloration`
+   - `cameraGlassBroken`
    - Or any other question defined in `threshold.json`
 2. **Back Key**: Select image key for back side:
    - Options: `backmerged`, `back`, `backcenter50`
@@ -135,8 +158,10 @@ The dashboard has 6 tabs in the following order:
 1. **Raw Data CSV**: Click "Choose File" and select your raw data CSV file
    - Required column: `pdd_txn_id`
    - Should contain `quote_date` column (format: `dd/mm/yyyy`)
+   - Should contain `front_black_image_url` and `front_black_uuid` columns (if available)
 2. **Eval Folder** (Optional): Enter path to folder containing eval CSV files
    - If provided, eval files will be joined with raw data
+3. **Direct Analysis CSV** (Optional): Upload analysis CSV directly for folder update mode
 
 #### Step 4: Set Output Folder
 - **Output Folder Name**: Enter name for output folder (default: `analysis_YYYY_MM_DD`)
@@ -229,19 +254,42 @@ The Analytics tab automatically displays metrics based on the loaded data from R
 - **Navigation**: Use First, Previous, Next, Last buttons
 - **Stats Bar**: Shows total records, filtered count, current position, and accuracy metrics
 
+#### Smart Image Tab Display:
+- **Conditional Display**: Only sides with valid image URLs are shown
+  - Checks for: `top_image_url`, `bottom_image_url`, `right_image_url`, `left_image_url`, `back_image_url`, `front_image_url`
+  - If a side's image URL is missing, empty, or invalid, that tab is not displayed
+  - Example: If only `front_image_url` exists, only the front image tab will be shown
+
+#### Front Black Image Support:
+- **When Input Toggle is Active**: Front side displays both front and front_black images side-by-side
+  - Left column: Front Input image with `front_uuid`
+  - Right column: Front Black Input image with `front_black_uuid`
+- **Data Requirements**: 
+  - `front_black_image_url`: URL for the front black input image
+  - `front_black_uuid`: UUID for the front black image (generated from UUID columns if not present)
+- **Both images are clickable** and open in the expanded modal view
+
 #### Interacting with Records:
 1. **Expand Row**: Click the arrow (▶) or date in the table row to expand/collapse
 2. **View Images**: 
    - Each side shows deployed and new model images (if available)
    - Single image view when only deployed model is available
+   - Front side shows both front and front_black when input toggle is active
 3. **Toggle Image Mode**:
    - Click the "🔄 Input" or "🔄 Result" badge to toggle between input and result images
    - Toggle state is record-specific (each record maintains its own state)
+   - When toggled to Input mode on front side, both front and front_black images are displayed
 4. **Expand Image**: Click any image to open it in a modal for full-size viewing
-5. **Score Badges**: 
+5. **Gamma Adjustment** (in Modal):
+   - Use the gamma slider in the modal header (range: 0.1 to 3.0)
+   - Default value: 1.0 (no adjustment)
+   - Values < 1.0: Brighten the image
+   - Values > 1.0: Darken the image
+   - Real-time adjustment using canvas-based gamma correction
+6. **Score Badges**: 
    - Color-coded badges show scores for each side
    - Red = contributing side, Green = non-contributing side
-6. **Copy Request Body**: Click "Copy Request Body" button below UUID to copy request body to clipboard
+7. **Copy Request Body**: Click "Copy Request Body" button below UUID to copy request body to clipboard
 
 #### Exporting Data:
 - Click **"📥 Export Audit CSV"** to export records with audit tags
@@ -251,6 +299,7 @@ The Analytics tab automatically displays metrics based on the loaded data from R
 - Filters automatically reset when switching away from the Image Viewer tab
 - Image toggle states are preserved per record
 - Expanded rows are preserved when toggling images (won't auto-collapse)
+- Only sides with valid image URLs are displayed as tabs
 
 ### 🔍 Cell Details Tab
 
@@ -263,12 +312,15 @@ The Analytics tab automatically displays metrics based on the loaded data from R
 - **Filtered Records**: Only records matching the clicked confusion matrix cell
 - **Title Bar**: Shows which cell was clicked (e.g., "No Defect → Minor Scratch")
 - **Back Button**: Click "← Back to Matrix" to return to Confusion Matrices tab
+- **Smart Image Tab Display**: Same as Image Viewer (only shows tabs for sides with valid URLs)
+- **Front Black Image Support**: Same as Image Viewer (side-by-side display in input mode)
+- **Gamma Adjustment**: Available in expanded image modal
 
 #### Interacting with Records:
 - Same interaction features as Image Viewer:
   - Expand/collapse rows
   - Toggle image mode (input/result)
-  - Expand images in modal
+  - Expand images in modal with gamma adjustment
   - Copy request body
   - Export audit CSV
 
@@ -292,7 +344,8 @@ The Analytics tab automatically displays metrics based on the loaded data from R
 - Each matrix shows Accuracy % and Sample count below
 
 #### Adjusting Thresholds:
-1. **Select Side**: Click a side button (Back, Left, Right, Top, Bottom)
+1. **Select Side**: Click a side button (Back, Left, Right, Top, Bottom, **Front**)
+   - All 6 sides are now supported, including Front
 2. **Adjust Sliders**: 
    - Each category has a range slider (0-100, integer values only)
    - Drag handles to adjust min/max values
@@ -310,7 +363,7 @@ The Analytics tab automatically displays metrics based on the loaded data from R
    - Optimizes thresholds for all sides to maximize accuracy
    - Shows processing loader during optimization
 2. **Optimize Selected Side**:
-   - Select a side first
+   - Select a side first (including Front)
    - Click **"🎯 Optimize Selected Side"** button
    - Optimizes thresholds only for the selected side
 
@@ -321,11 +374,15 @@ The Analytics tab automatically displays metrics based on the loaded data from R
 - Changed records are displayed by default below the threshold adjusters
 - Full filtering capabilities available (same as Image Viewer)
 - Shows records where the classification changed due to threshold adjustments
+- **Smart Image Tab Display**: Only shows tabs for sides with valid image URLs
+- **Front Black Image Support**: Same as Image Viewer (side-by-side display in input mode)
+- **Gamma Adjustment**: Available in expanded image modal
 
 #### Notes:
 - Threshold adjustments are real-time (matrices update immediately)
 - Optimization may take several seconds depending on data size
 - Question name is automatically detected from report generation
+- Front side is now fully supported in threshold adjustment
 
 ## Configuration
 
@@ -334,7 +391,7 @@ The Analytics tab automatically displays metrics based on the loaded data from R
 The dashboard automatically loads `threshold.json` from the `analysisDashboard` directory (falls back to parent directory). This file defines:
 
 - **Question-specific thresholds**: Each question (e.g., `physicalConditionScratch`, `physicalConditionPanel`) has its own thresholds
-- **Side-specific categories**: Each side (top, bottom, left, right, back, front) has category definitions
+- **Side-specific categories**: Each side (top, bottom, left, right, back, **front**) has category definitions
 - **Category ranges**: Each category has `[min, max]` score ranges
 - **Severity ordering**: Categories are ordered by severity (used for multi-category classification)
 
@@ -343,6 +400,11 @@ Example structure:
 {
   "physicalConditionScratch": {
     "top": {
+      "No Scratches": [0, 50],
+      "Minor Scratch": [51, 75],
+      "Major Scratch": [76, 100]
+    },
+    "front": {
       "No Scratches": [0, 50],
       "Minor Scratch": [51, 75],
       "Major Scratch": [76, 100]
@@ -368,6 +430,8 @@ Example structure:
 #### Input Requirements:
 - **Raw Data CSV**: Must contain `pdd_txn_id` column
 - **Quote Date**: Should be in `dd/mm/yyyy` format
+- **Image URLs**: Should contain `{side}_image_url` columns (top, bottom, left, right, back, front)
+- **Front Black Images** (Optional): Should contain `front_black_image_url` and `front_black_uuid` columns
 - **Eval Folder** (Optional): Should contain CSV files matching `pdd_txn_id` values
 
 ## File Structure
@@ -419,7 +483,7 @@ See `requirements.txt` for full list. Main dependencies:
    - Select Mode
 3. Select Question Name (e.g., `physicalConditionScratch`)
 4. Select Back Key and Front Key
-5. Upload Raw Data CSV file
+5. Upload Raw Data CSV file (with `front_black_image_url` and `front_black_uuid` if available)
 6. (Optional) Enter Eval Folder path
 7. Review Output Folder name (default: `analysis_YYYY_MM_DD`)
 8. Click **"Generate Report"**
@@ -448,27 +512,32 @@ See `requirements.txt` for full list. Main dependencies:
    - Filter by score ranges
 3. Navigate through pages of records
 4. Expand rows to view detailed images
-5. Toggle between input and result images
-6. Click images to expand in modal
-7. Export audit CSV if needed
+5. **Toggle to Input mode on front side** to see both front and front_black images side-by-side
+6. Toggle between input and result images for other sides
+7. Click images to expand in modal
+8. **Adjust gamma** using the slider in the modal header for better image visibility
+9. Export audit CSV if needed
 
 ### Step 5: View Cell Details
 1. From Confusion Matrices tab, click a cell
 2. Automatically navigates to **🔍 Cell Details** tab
 3. View filtered records matching the cell
 4. Apply additional filters if needed
-5. Export audit CSV
-6. Click "← Back to Matrix" to return
+5. View front and front_black images when input toggle is active
+6. Use gamma adjustment in expanded modal
+7. Export audit CSV
+8. Click "← Back to Matrix" to return
 
 ### Step 6: Tweak Thresholds
 1. Navigate to **🎛️ Threshold Tweaker** tab
 2. Select model (Deployed or New)
-3. Select a side to adjust
+3. **Select a side** (Back, Left, Right, Top, Bottom, or **Front**)
 4. Modify threshold sliders for categories
 5. Observe real-time impact on adjusted matrix
 6. Review changed records
-7. (Optional) Click "🎯 Optimize Thresholds" for automatic optimization
-8. Click "🔄 Reset to Original" to restore defaults
+7. View images with front_black support and gamma adjustment
+8. (Optional) Click "🎯 Optimize Thresholds" for automatic optimization
+9. Click "🔄 Reset to Original" to restore defaults
 
 ## Tips and Best Practices
 
@@ -476,6 +545,7 @@ See `requirements.txt` for full list. Main dependencies:
    - Use "Reset Data" button only when you want to clear all loaded data
    - Generated reports are saved in output folders for future reference
    - Confusion matrix PNGs are saved with date-based titles
+   - Ensure `front_black_image_url` and `front_black_uuid` columns are included in CSV for front black image support
 
 2. **Filtering**:
    - Filters reset automatically when switching tabs (except Report Generation)
@@ -486,17 +556,37 @@ See `requirements.txt` for full list. Main dependencies:
    - Image toggle states are preserved per record
    - Expanded rows stay expanded when toggling images
    - Click images to view in full-size modal
+   - **Use gamma adjustment** to improve image visibility (especially for dark images)
+   - Only sides with valid image URLs are displayed as tabs
+   - Front side shows both front and front_black images when input toggle is active
 
-4. **Threshold Tweaking**:
+4. **Front Black Images**:
+   - Front black images only display when:
+     - Side is 'front'
+     - Input toggle is active
+     - `front_black_image_url` exists and is valid
+   - Both front and front_black images are clickable and support gamma adjustment
+   - UUIDs are displayed below each image
+
+5. **Threshold Tweaking**:
    - Start with small adjustments to see impact
    - Use optimization buttons for data-driven threshold selection
    - Review changed records to understand impact
    - Reset to original if adjustments don't improve accuracy
+   - **Front side is now fully supported** - adjust thresholds for front side categories
 
-5. **Performance**:
+6. **Gamma Adjustment**:
+   - Use gamma < 1.0 to brighten dark images
+   - Use gamma > 1.0 to darken bright images
+   - Default gamma = 1.0 (no adjustment)
+   - Adjustment is real-time and applies to all images in modal
+   - Canvas-based correction provides accurate gamma adjustment
+
+7. **Performance**:
    - Large datasets may take time to load
    - Optimization can take 10-30 seconds depending on data size
    - Pagination helps manage large record sets (10 per page)
+   - Gamma adjustment uses canvas processing (may be slower for very large images)
 
 ## Troubleshooting
 
@@ -516,16 +606,34 @@ See `requirements.txt` for full list. Main dependencies:
    - Verify image URLs are correct in the CSV
    - Check that image keys (back/front) are configured correctly
    - Ensure images are accessible at the URL locations
+   - **Check that image URL columns exist** - only sides with valid URLs will show tabs
 
-4. **Threshold tweaker not showing matrices**:
+4. **Front black images not showing**:
+   - Verify `front_black_image_url` column exists in CSV
+   - Ensure input toggle is active (not result mode)
+   - Check that `front_black_image_url` values are not empty or invalid
+   - Verify `front_black_uuid` column exists (will use 'N/A' if missing)
+
+5. **Gamma slider not visible**:
+   - Ensure you've clicked an image to open the modal
+   - Check that the modal header is visible
+   - Refresh the page if slider doesn't appear
+
+6. **Threshold tweaker not showing matrices**:
    - Ensure data has been loaded from report generation
    - Check that the selected model has data (new_cscan_answer for New Model)
    - Verify threshold.json is in the correct location
+   - **Ensure Front side is defined in threshold.json** for the selected question
 
-5. **Optimization not working**:
+7. **Optimization not working**:
    - Ensure sufficient data is available
    - Check console for error messages
    - Try optimizing a single side first
+
+8. **Some image tabs missing**:
+   - This is expected behavior - only sides with valid image URLs are displayed
+   - Check that `{side}_image_url` columns exist and contain valid URLs
+   - Empty, null, or placeholder values will hide that side's tab
 
 ## Notes
 
@@ -536,7 +644,20 @@ See `requirements.txt` for full list. Main dependencies:
 - **Date Format**: Quote dates should be in `dd/mm/yyyy` format
 - **Integer Scores**: All score sliders and filters use integer values only
 - **State Management**: Image toggle states, expanded rows, and filters are managed per record/tab
+- **Smart Tab Display**: Only shows image tabs for sides with valid image URLs
+- **Front Black Support**: Front side displays both front and front_black images when input toggle is active
+- **Gamma Correction**: Canvas-based gamma adjustment with CSS filter fallback for CORS issues
+- **Front Side Support**: Fully supported in Threshold Tweaker (all 6 sides: top, bottom, left, right, back, front)
 - **Extensible**: Easy to add new features or modify existing ones
+
+## Recent Updates
+
+### Version Updates:
+- ✅ **Front Side Support**: Added front side to Threshold Tweaker side selector
+- ✅ **Front Black Images**: Support for `front_black_image_url` and `front_black_uuid` columns
+- ✅ **Smart Tab Display**: Conditional display of image tabs based on available image URLs
+- ✅ **Gamma Adjustment**: Real-time gamma correction slider in expanded image modal
+- ✅ **Code Cleanup**: Removed unnecessary debug print statements
 
 ## Support
 

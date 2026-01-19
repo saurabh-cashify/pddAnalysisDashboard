@@ -168,5 +168,5 @@ if __name__ == '__main__':
     print(f"📁 Base Directory: {BASE_DIR}")
     print(f"🌐 Dashboard will be available at: http://{host}:{port}")
     print("=" * 60)
-    app.run_server(debug=True, host=host, port=port)
+    app.run_server(debug=False, host=host, port=port)
 
