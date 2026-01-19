@@ -238,22 +238,8 @@ def create_image_viewer_tab():
             ])
         ], className="mt-4"),
         
-        # Image Modal (for expanded image view)
-        dbc.Modal(
-            [
-                dbc.ModalHeader(dbc.ModalTitle("Image View")),
-                dbc.ModalBody([
-                    html.Img(id="modal-image", src="", style={"width": "100%", "height": "auto"})
-                ]),
-                dbc.ModalFooter([
-                    dbc.Button("Close", id="close-modal", className="ms-auto", n_clicks=0)
-                ])
-            ],
-            id="image-modal",
-            is_open=False,
-            size="xl",
-            centered=True
-        ),
+        # Image Modal (for expanded image view) - using shared modal from app.py with gamma slider
+        # Modal removed here to use the one in app.py
         
     ], fluid=True, className="tab-content-container")
 
@@ -488,17 +474,41 @@ def create_record_display_with_audit(record, current_index, record_id, image_tog
     # Images Grid
     images_grid = []
     for side in sides:
+        # Check if image URL exists for this side - skip if missing
+        input_image_url = record.get(f'{side}_image_url', '')
+        
+        # Skip this side if image URL is missing/empty/invalid
+        # Check for None, empty string, whitespace-only strings, or placeholder values
+        if not input_image_url:
+            continue
+        if isinstance(input_image_url, str):
+            url_clean = input_image_url.strip().lower()
+            if url_clean == '' or url_clean in ['n/a', 'na', 'null', 'none', '-']:
+                continue
+        
         old_score = float(record.get(f'{side}_score', 0) or 0)
         new_score_val = record.get(f'new_{side}_score')
         new_score = float(new_score_val) if new_score_val not in [None, '', 'N/A'] else None
         
         old_result_url = record.get(f'{side}_result_url', '')
         new_result_url = record.get(f'new_{side}_result_image_url', '')
-        input_image_url = record.get(f'{side}_image_url', '')
         
         # Get UUIDs and request body for display
         side_uuid = record.get(f'{side}_uuid', 'N/A')
         side_request_body = record.get(f'{side}_request_body', '')
+        
+        # For front side, also get front_black data
+        front_black_image_url = None
+        front_black_uuid = None
+        if side == 'front':
+            front_black_image_url = record.get('front_black_image_url', '')
+            front_black_uuid = record.get('front_black_uuid', '')
+            # If front_black_uuid is missing or empty, try to generate from UUID pattern
+            # Check if it exists in the record, otherwise use 'N/A'
+            if not front_black_uuid or (isinstance(front_black_uuid, str) and front_black_uuid.strip() == ''):
+                # Try to construct from other UUID columns if available
+                # This is a fallback - ideally the data should have front_black_uuid from Redash
+                front_black_uuid = 'N/A'
         
         has_new = new_result_url and new_score is not None
         
@@ -525,6 +535,13 @@ def create_record_display_with_audit(record, current_index, record_id, image_tog
         display_old_url = input_image_url if current_image_mode == 'input' else old_result_url
         display_new_url = input_image_url if current_image_mode == 'input' else new_result_url
         image_label = 'Input Image' if current_image_mode == 'input' else 'Result'
+        
+        # Special handling for front side in input mode: show both front and front_black
+        show_front_black = (side == 'front' and current_image_mode == 'input' and 
+                           front_black_image_url and 
+                           isinstance(front_black_image_url, str) and 
+                           front_black_image_url.strip() != '' and
+                           front_black_image_url.strip().lower() not in ['n/a', 'na', 'null', 'none', '-'])
         
         # Professional Card Design
         card_content = []
@@ -607,7 +624,104 @@ def create_record_display_with_audit(record, current_index, record_id, image_tog
         card_content.append(control_row)
         
         # Images - Auto show side-by-side if both exist, else single
-        if has_new:
+        # Special case: Front side in input mode with front_black
+        if show_front_black:
+            # Show front and front_black side by side in input mode
+            image_body = html.Div([
+                dbc.Row([
+                    dbc.Col([
+                        html.Div(
+                            "Front Input", 
+                            className="text-center mb-2", 
+                            style={
+                                "color": "#1e40af", 
+                                "fontSize": "0.9em", 
+                                "fontWeight": "700",
+                                "textTransform": "uppercase",
+                                "letterSpacing": "0.5px"
+                            }
+                        ),
+                        html.Div([
+                            html.Div(
+                                html.Img(
+                                    src=display_old_url if display_old_url else "",
+                                    style={
+                                        "width": "100%", 
+                                        "maxWidth": "100%",
+                                        "maxHeight": "600px",
+                                        "objectFit": "contain",
+                                        "borderRadius": "8px",
+                                        "border": "1px solid #e2e8f0"
+                                    },
+                                    className="hover-shadow"
+                                ),
+                                id={"type": "image-clickable", "side": side, "version": "old", "record_id": record_id},
+                                n_clicks=0,
+                                style={"cursor": "pointer", "background": "#ffffff", "width": "100%", "maxWidth": "100%"}
+                            ) if display_old_url else html.Div(
+                                "No image", 
+                                className="text-muted text-center p-4", 
+                                style={
+                                    "border": "2px dashed #cbd5e1",
+                                    "borderRadius": "8px",
+                                    "minHeight": "300px",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center",
+                                    "background": "#f8fafc"
+                                }
+                            ),
+                            html.Small(f"UUID: {side_uuid}", className="text-muted d-block text-center mt-2", style={"fontSize": "0.7em", "wordBreak": "break-all"}),
+                        ])
+                    ], md=6),
+                    dbc.Col([
+                        html.Div(
+                            "Front Black Input", 
+                            className="text-center mb-2", 
+                            style={
+                                "color": "#059669", 
+                                "fontSize": "0.9em", 
+                                "fontWeight": "700",
+                                "textTransform": "uppercase",
+                                "letterSpacing": "0.5px"
+                            }
+                        ),
+                        html.Div([
+                            html.Div(
+                                html.Img(
+                                    src=front_black_image_url if front_black_image_url else "",
+                                    style={
+                                        "width": "100%", 
+                                        "maxWidth": "100%",
+                                        "maxHeight": "600px",
+                                        "objectFit": "contain",
+                                        "borderRadius": "8px",
+                                        "border": "1px solid #e2e8f0"
+                                    },
+                                    className="hover-shadow"
+                                ),
+                                id={"type": "image-clickable", "side": "front_black", "version": "old", "record_id": record_id},
+                                n_clicks=0,
+                                style={"cursor": "pointer", "background": "#ffffff", "width": "100%", "maxWidth": "100%"}
+                            ) if front_black_image_url else html.Div(
+                                "No image", 
+                                className="text-muted text-center p-4", 
+                                style={
+                                    "border": "2px dashed #cbd5e1",
+                                    "borderRadius": "8px",
+                                    "minHeight": "300px",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center",
+                                    "background": "#f8fafc"
+                                }
+                            ),
+                            html.Small(f"UUID: {front_black_uuid}", className="text-muted d-block text-center mt-2", style={"fontSize": "0.7em", "wordBreak": "break-all"}),
+                        ])
+                    ], md=6),
+                ])
+            ], style={"padding": "1.5rem", "background": "#ffffff", "minHeight": "650px", "overflow": "hidden"})
+        elif has_new:
             # Side by side comparison (both deployed and new exist)
             image_body = html.Div([
                 dbc.Row([
@@ -715,6 +829,102 @@ def create_record_display_with_audit(record, current_index, record_id, image_tog
                                 className="mt-1",
                                 style={"fontSize": "0.7em", "width": "100%"}
                             )] if side_request_body else [])
+                        ])
+                    ], md=6),
+                ])
+            ], style={"padding": "1.5rem", "background": "#ffffff", "minHeight": "650px", "overflow": "hidden"})
+        elif show_front_black and not has_new:
+            # Single view with front_black (input mode, no new model)
+            image_body = html.Div([
+                dbc.Row([
+                    dbc.Col([
+                        html.Div(
+                            "Front Input", 
+                            className="text-center mb-2", 
+                            style={
+                                "color": "#1e40af", 
+                                "fontSize": "0.9em", 
+                                "fontWeight": "700",
+                                "textTransform": "uppercase",
+                                "letterSpacing": "0.5px"
+                            }
+                        ),
+                        html.Div([
+                            html.Div(
+                                html.Img(
+                                    src=display_old_url if display_old_url else "",
+                                    style={
+                                        "width": "100%", 
+                                        "maxWidth": "100%",
+                                        "maxHeight": "600px",
+                                        "objectFit": "contain",
+                                        "borderRadius": "8px",
+                                        "border": "1px solid #e2e8f0"
+                                    },
+                                    className="hover-shadow"
+                                ),
+                                id={"type": "image-clickable", "side": side, "version": "single", "record_id": record_id},
+                                n_clicks=0,
+                                style={"cursor": "pointer", "background": "#ffffff", "width": "100%", "maxWidth": "100%"}
+                            ) if display_old_url else html.Div(
+                                "No image", 
+                                className="text-muted text-center p-4", 
+                                style={
+                                    "border": "2px dashed #cbd5e1",
+                                    "borderRadius": "8px",
+                                    "minHeight": "300px",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center",
+                                    "background": "#f8fafc"
+                                }
+                            ),
+                            html.Small(f"UUID: {side_uuid}", className="text-muted d-block text-center mt-2", style={"fontSize": "0.7em", "wordBreak": "break-all"}),
+                        ])
+                    ], md=6),
+                    dbc.Col([
+                        html.Div(
+                            "Front Black Input", 
+                            className="text-center mb-2", 
+                            style={
+                                "color": "#059669", 
+                                "fontSize": "0.9em", 
+                                "fontWeight": "700",
+                                "textTransform": "uppercase",
+                                "letterSpacing": "0.5px"
+                            }
+                        ),
+                        html.Div([
+                            html.Div(
+                                html.Img(
+                                    src=front_black_image_url if front_black_image_url else "",
+                                    style={
+                                        "width": "100%", 
+                                        "maxWidth": "100%",
+                                        "maxHeight": "600px",
+                                        "objectFit": "contain",
+                                        "borderRadius": "8px",
+                                        "border": "1px solid #e2e8f0"
+                                    },
+                                    className="hover-shadow"
+                                ),
+                                id={"type": "image-clickable", "side": "front_black", "version": "single", "record_id": record_id},
+                                n_clicks=0,
+                                style={"cursor": "pointer", "background": "#ffffff", "width": "100%", "maxWidth": "100%"}
+                            ) if front_black_image_url else html.Div(
+                                "No image", 
+                                className="text-muted text-center p-4", 
+                                style={
+                                    "border": "2px dashed #cbd5e1",
+                                    "borderRadius": "8px",
+                                    "minHeight": "300px",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center",
+                                    "background": "#f8fafc"
+                                }
+                            ),
+                            html.Small(f"UUID: {front_black_uuid}", className="text-muted d-block text-center mt-2", style={"fontSize": "0.7em", "wordBreak": "break-all"}),
                         ])
                     ], md=6),
                 ])
@@ -1487,24 +1697,31 @@ def register_image_viewer_callbacks(app):
                 
                 # Get the correct URL - use record-specific state
                 # State structure: {record_id: {side: 'input'|'result'}}
+                # For front_black, check the toggle state for 'front' since they share the same toggle
+                state_side = 'front' if side == 'front_black' else side
+                
                 # Check tweaker image states if on tweaker tab, otherwise use regular image states
                 if active_tab == "tweaker" and tweaker_image_states and isinstance(tweaker_image_states, dict):
                     record_states = tweaker_image_states.get(record_id, {})
                     if isinstance(record_states, dict):
-                        current_mode = record_states.get(side, 'result')
+                        current_mode = record_states.get(state_side, 'result')
                     else:
                         current_mode = 'result'
                 elif image_states and isinstance(image_states, dict):
                     record_states = image_states.get(record_id, {})
                     if isinstance(record_states, dict):
-                        current_mode = record_states.get(side, 'result')
+                        current_mode = record_states.get(state_side, 'result')
                     else:
                         current_mode = 'result'
                 else:
                     current_mode = 'result'
                 
                 if current_mode == 'input':
-                    url = record.get(f'{side}_image_url', '')
+                    # Handle front_black side
+                    if side == 'front_black':
+                        url = record.get('front_black_image_url', '')
+                    else:
+                        url = record.get(f'{side}_image_url', '')
                 else:
                     if version == 'new':
                         url = record.get(f'new_{side}_result_image_url', '') or record.get(f'{side}_result_url', '')

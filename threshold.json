@@ -6,7 +6,7 @@
       "Missing Panel": [80, 100]
     },
     "bottom": {
-      "No Defect in Panel": [0, 35],
+      "No Defect in Panel": [0, 30],
       "Cracked or Broken Panel": [35, 80],
       "Missing Panel": [80, 100]
     },
@@ -16,7 +16,7 @@
       "Missing Panel": [80, 100]
     },
     "right": {
-      "No Defect in Panel": [0, 50],
+      "No Defect in Panel": [0, 40],
       "Cracked or Broken Panel": [50,80],
       "Missing Panel": [80, 100]
     },
@@ -102,9 +102,9 @@
   "screenDisplaySpot": {
     "front": {
       "No Spot on Screen": [0, 10],
-      "Upto 3 white spots": [10, 50],
-      "More than 3 spots": [50, 80],
-      "Colored Spots": [80, 100]
+      "2 or less than 2 spots (small spot)": [10, 50],
+      "3 or more than 3 spots": [50, 80],
+      "Very heavy or large spot": [80, 100]
     }
   },
   "screenBubblePaint": {

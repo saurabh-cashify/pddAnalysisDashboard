@@ -213,22 +213,8 @@ def create_cell_details_tab():
             ], className="text-center py-5")
         ]),
         
-        # Image Modal (same as image viewer)
-        dbc.Modal(
-            [
-                dbc.ModalHeader(dbc.ModalTitle("Image View")),
-                dbc.ModalBody([
-                    html.Img(id="modal-image", src="", style={"width": "100%", "height": "auto"})
-                ]),
-                dbc.ModalFooter([
-                    dbc.Button("Close", id="close-modal", className="ms-auto", n_clicks=0)
-                ])
-            ],
-            id="image-modal",
-            is_open=False,
-            size="xl",
-            centered=True
-        ),
+        # Image Modal (same as image viewer) - using shared modal from app.py
+        # Modal removed here to use the one in app.py with gamma slider
         
         # Navigation Controls (for pages of 10 records)
         dbc.Card([

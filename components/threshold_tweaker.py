@@ -322,6 +322,7 @@ def create_threshold_tweaker_tab():
                     dbc.Button("Right", id={"type": "tweaker-side-selector", "side": "right"}, outline=True, color="primary", size="sm"),
                     dbc.Button("Top", id={"type": "tweaker-side-selector", "side": "top"}, outline=True, color="primary", size="sm"),
                     dbc.Button("Bottom", id={"type": "tweaker-side-selector", "side": "bottom"}, outline=True, color="primary", size="sm"),
+                    dbc.Button("Front", id={"type": "tweaker-side-selector", "side": "front"}, outline=True, color="primary", size="sm"),
                 ], className="mb-4"),
                 
                 # Threshold Sliders
@@ -481,22 +482,8 @@ def create_threshold_tweaker_tab():
             ], className="text-center py-5")
         ]),
         
-        # Image Modal (for expanded image view) - same as image viewer
-        dbc.Modal(
-            [
-                dbc.ModalHeader(dbc.ModalTitle("Image View")),
-                dbc.ModalBody([
-                    html.Img(id="modal-image", src="", style={"width": "100%", "height": "auto"})
-                ]),
-                dbc.ModalFooter([
-                    dbc.Button("Close", id="close-modal", className="ms-auto", n_clicks=0)
-                ])
-            ],
-            id="image-modal",
-            is_open=False,
-            size="xl",
-            centered=True
-        ),
+        # Image Modal (for expanded image view) - using shared modal from app.py
+        # Modal removed here to use the one in app.py with gamma slider
         
     ], fluid=True, className="tab-content-container")
 
@@ -627,7 +614,7 @@ def register_threshold_tweaker_callbacks(app):
         selected_side = trigger_dict.get('side')
         
         # Create active states for all buttons
-        sides = ['back', 'left', 'right', 'top', 'bottom']
+        sides = ['back', 'left', 'right', 'top', 'bottom', 'front']
         active_states = [s == selected_side for s in sides]
         
         print(f"🎯 Selected side: {selected_side}")
