@@ -14,6 +14,7 @@ This dashboard provides comprehensive analysis with:
 import dash
 from dash import dcc, html, Input, Output, State
 import dash_bootstrap_components as dbc
+from flask import jsonify
 from pathlib import Path
 import os
 
@@ -47,6 +48,20 @@ app = dash.Dash(
 )
 
 app.title = "Defect Detection Analysis Dashboard"
+
+
+# =============== KUBERNETES HEALTH CHECKS ===============
+@app.server.route("/health/live")
+def liveness():
+    """Liveness: process is running. K8s uses this to decide whether to restart the pod."""
+    return jsonify({"status": "alive"}), 200
+
+
+@app.server.route("/health/ready")
+def readiness():
+    """Readiness: app is ready to accept traffic. K8s uses this for Service endpoints."""
+    return jsonify({"status": "ready"}), 200
+
 
 # =============== CONFIGURATION ===============
 BASE_DIR = Path(__file__).parent.parent
