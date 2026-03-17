@@ -516,20 +516,20 @@ def create_record_display_with_audit(record, current_index, record_id, image_tog
         is_contributing = side.lower() in contributing_sides_list
         is_new_contributing = side.lower() in new_contributing_sides_list
         
-        # Get current toggle state for this side and record (always default to 'result')
+        # Get current toggle state for this side and record (always default to 'input')
         # Handle None, empty dict, or missing key cases
         # State structure: {record_id: {side: 'input'|'result'}}
         if not image_toggle_states or not isinstance(image_toggle_states, dict):
-            current_image_mode = 'result'
+            current_image_mode = 'input'
         else:
             # Get state for this specific record using record_id (txn_id)
             record_states = image_toggle_states.get(record_id, {})
             if isinstance(record_states, dict):
                 current_image_mode = record_states.get(side)
                 if current_image_mode not in ['input', 'result']:
-                    current_image_mode = 'result'
+                    current_image_mode = 'input'
             else:
-                current_image_mode = 'result'
+                current_image_mode = 'input'
         
         # Determine which URLs to display
         display_old_url = input_image_url if current_image_mode == 'input' else old_result_url
@@ -572,20 +572,20 @@ def create_record_display_with_audit(record, current_index, record_id, image_tog
         
         # Second row: Toggle button and scores
         # Button shows what it will switch TO, with clear active/inactive styling
-        is_showing_result = (current_image_mode == 'result')
+        is_showing_input = (current_image_mode == 'input')
         
         control_row = html.Div([
             dbc.Row([
                 dbc.Col([
                     html.Span(
-                        f"🔄 {'Input' if is_showing_result else 'Result'}",
+                        f"🔄 {'Result' if is_showing_input else 'Input'}",
                         id={"type": "image-toggle-btn", "side": side, "record_id": record_id},
                         n_clicks=0,
                         className="badge w-100 d-block text-center",
                         style={
-                            "background": "#1e40af" if is_showing_result else "#f8fafc",
-                            "color": "#ffffff" if is_showing_result else "#475569",
-                            "border": f"2px solid {'#1e40af' if is_showing_result else '#cbd5e1'}",
+                            "background": "#1e40af" if is_showing_input else "#f8fafc",
+                            "color": "#ffffff" if is_showing_input else "#475569",
+                            "border": f"2px solid {'#1e40af' if is_showing_input else '#cbd5e1'}",
                             "fontWeight": "600",
                             "fontSize": "0.85em",
                             "padding": "6px",
@@ -1542,9 +1542,9 @@ def register_image_viewer_callbacks(app):
                         record_state = {}
                         current_states[record_id] = record_state
                     
-                    # Toggle the state for this specific record and side
-                    current_state = record_state.get(clicked_side, 'result')
-                    new_state = 'input' if current_state == 'result' else 'result'
+                    # Toggle the state for this specific record and side (default to 'input')
+                    current_state = record_state.get(clicked_side, 'input')
+                    new_state = 'result' if current_state == 'input' else 'input'
                     record_state[clicked_side] = new_state
             except Exception as e:
                 import traceback
@@ -1682,20 +1682,21 @@ def register_image_viewer_callbacks(app):
                 state_side = 'front' if side == 'front_black' else side
                 
                 # Check tweaker image states if on tweaker tab, otherwise use regular image states
+                # Default to 'input' to match the new default display mode
                 if active_tab == "tweaker" and tweaker_image_states and isinstance(tweaker_image_states, dict):
                     record_states = tweaker_image_states.get(record_id, {})
                     if isinstance(record_states, dict):
-                        current_mode = record_states.get(state_side, 'result')
+                        current_mode = record_states.get(state_side, 'input')
                     else:
-                        current_mode = 'result'
+                        current_mode = 'input'
                 elif image_states and isinstance(image_states, dict):
                     record_states = image_states.get(record_id, {})
                     if isinstance(record_states, dict):
-                        current_mode = record_states.get(state_side, 'result')
+                        current_mode = record_states.get(state_side, 'input')
                     else:
-                        current_mode = 'result'
+                        current_mode = 'input'
                 else:
-                    current_mode = 'result'
+                    current_mode = 'input'
                 
                 if current_mode == 'input':
                     # Handle front_black side

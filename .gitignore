@@ -45,6 +45,9 @@ eval_runs/
 raw_data/
 failing_cases/
 severityTraining/
+Raw Data/
+plot_bkpcs/
+
 # Generated files
 *.log
 *.pyc

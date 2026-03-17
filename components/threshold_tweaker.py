@@ -2092,9 +2092,9 @@ def register_threshold_tweaker_callbacks(app):
             if not isinstance(record_states, dict):
                 record_states = {}
             
-            # Toggle state
-            current_mode = record_states.get(side, 'result')
-            new_mode = 'input' if current_mode == 'result' else 'result'
+            # Toggle state (default to 'input')
+            current_mode = record_states.get(side, 'input')
+            new_mode = 'result' if current_mode == 'input' else 'input'
             
             # Update nested structure
             record_states[side] = new_mode
