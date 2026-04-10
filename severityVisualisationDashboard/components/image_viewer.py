@@ -115,7 +115,14 @@ def create_image_viewer_tab():
             dbc.ModalBody(html.Img(
                 id="sev-modal-img",
                 src="",
-                style={"width": "100%", "height": "auto"},
+                style={
+                    "maxHeight": "75vh",
+                    "maxWidth": "100%",
+                    "width": "auto",
+                    "height": "auto",
+                    "display": "block",
+                    "margin": "0 auto",
+                },
             )),
             dbc.ModalFooter(
                 dbc.Button("Close", id="sev-close-modal", className="ms-auto"),
@@ -156,7 +163,7 @@ def _make_card(record: dict, card_idx: int) -> dbc.Card:
 
     # Image height: portrait sides (back/front) get more room; landscape sides less
     _portrait_sides = {"back", "front", "frontblack"}
-    img_height = "460px" if side.lower() in _portrait_sides else "320px"
+    img_height = "460px" if side.lower() in _portrait_sides else "420px"
 
     # hidden spans to store URLs (read by pattern-matching callback)
     url_stores = html.Div([

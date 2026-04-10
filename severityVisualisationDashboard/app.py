@@ -121,4 +121,4 @@ if __name__ == "__main__":
     print("=" * 55)
     print(f"  http://localhost:{port}")
     print("=" * 55)
-    app.run(debug=True, host=host, port=port)
+    app.run(debug=False, host=host, port=port)
