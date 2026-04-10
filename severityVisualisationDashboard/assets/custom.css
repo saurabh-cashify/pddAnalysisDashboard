@@ -1,0 +1,254 @@
+/* =====================================================================
+   Severity Visualisation Dashboard — Custom CSS
+   Matches pddAnalysisDashboard design language (blue gradient header,
+   white card container, Bootstrap-augmented components).
+   ===================================================================== */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+                 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    padding: 20px;
+    color: #1e293b;
+    min-height: 100vh;
+}
+
+/* ── Main container ───────────────────────────────────────────────── */
+.main-container {
+    max-width: 1900px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    overflow: hidden;
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.header-container {
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+    color: white;
+    padding: 36px 30px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.header-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(45deg, transparent 30%,
+                rgba(255,255,255,0.08) 50%, transparent 70%);
+    pointer-events: none;
+}
+
+.dashboard-header { position: relative; z-index: 1; }
+
+.dashboard-title {
+    font-size: 2.1em;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.dashboard-subtitle {
+    font-size: 1em;
+    opacity: 0.9;
+    color: white;
+}
+
+/* ── Tab navigation ──────────────────────────────────────────────── */
+.tab-navigation {
+    background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+    border-bottom: 2px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    width: 100%;
+}
+
+.tab-navigation .nav           { width: 100%; display: flex; justify-content: space-evenly; }
+.tab-navigation .nav-item      { flex: 1; text-align: center; }
+.tab-navigation .nav-link      { width: 100%; text-align: center; }
+
+/* ── Tab content area ────────────────────────────────────────────── */
+.tab-content-container {
+    padding: 35px;
+    background: #f8fafc;
+    min-height: calc(100vh - 230px);
+}
+
+/* ── Section header ──────────────────────────────────────────────── */
+.section-header { margin-bottom: 28px; }
+
+.section-title {
+    font-size: 1.75em;
+    color: #1e40af;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    margin-bottom: 6px;
+}
+
+.section-subtitle {
+    font-size: 1em;
+    color: #64748b;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────── */
+.card {
+    border: none !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: box-shadow 0.25s ease;
+}
+
+.card:hover {
+    box-shadow: 0 8px 22px rgba(59,130,246,0.12);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+    color: white !important;
+    padding: 18px 22px !important;
+    border-radius: 12px 12px 0 0 !important;
+    font-weight: 600;
+    font-size: 1em;
+}
+
+/* ── Upload area ─────────────────────────────────────────────────── */
+.upload-area {
+    width: 100%;
+    min-height: 110px;
+    border: 2px dashed #3b82f6;
+    border-radius: 12px;
+    padding: 28px;
+    text-align: center;
+    background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+    transition: all 0.25s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.upload-area:hover {
+    background: linear-gradient(to bottom, #eff6ff, #dbeafe);
+    border-color: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59,130,246,0.18);
+}
+
+.upload-icon {
+    font-size: 3em;
+    color: #3b82f6;
+    margin-bottom: 12px;
+    opacity: 0.8;
+}
+
+.upload-text {
+    color: #64748b;
+    font-size: 1.05em;
+    font-weight: 500;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────── */
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(59,130,246,0.28);
+    font-weight: 600;
+    transition: all 0.25s;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(59,130,246,0.38);
+    color: white !important;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(16,185,129,0.28);
+    font-weight: 600;
+    transition: all 0.25s;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(16,185,129,0.38);
+    color: white !important;
+}
+
+/* ── Form inputs ─────────────────────────────────────────────────── */
+.form-control, .form-select {
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 9px 12px;
+    transition: border-color 0.25s;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 0.2rem rgba(59,130,246,0.22);
+}
+
+label {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+/* ── Severity card carousel ──────────────────────────────────────── */
+
+/* Scrollbar styling for the carousel container */
+#sev-card-carousel::-webkit-scrollbar {
+    height: 6px;
+}
+
+#sev-card-carousel::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+#sev-card-carousel::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+#sev-card-carousel::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Individual severity cards */
+.severity-card-img {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+
+.severity-card-img:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+}
+
+/* ── Alert / badge ───────────────────────────────────────────────── */
+.alert {
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* ── Spinner ─────────────────────────────────────────────────────── */
+.dash-spinner {
+    color: #3b82f6 !important;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .dashboard-title   { font-size: 1.4em; }
+    .tab-content-container { padding: 20px; }
+}
