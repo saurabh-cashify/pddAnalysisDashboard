@@ -6,8 +6,8 @@
       "Missing Panel": [90, 100]
     },
     "bottom": {
-      "No Defect in Panel": [0, 35],
-      "Cracked or Broken Panel": [35, 90],
+      "No Defect in Panel": [0, 27],
+      "Cracked or Broken Panel": [27, 90],
       "Missing Panel": [90, 100]
     },
     "left": {
@@ -16,8 +16,8 @@
       "Missing Panel": [90, 100]
     },
     "right": {
-      "No Defect in Panel": [0, 30],
-      "Cracked or Broken Panel": [30, 90],
+      "No Defect in Panel": [0, 26],
+      "Cracked or Broken Panel": [26, 90],
       "Missing Panel": [90, 100]
     },
     "back": {
@@ -30,42 +30,42 @@
     "back": {
       "No Scratches": [0, 10],
       "Normal sign of usage": [10, 25],
-      "Minor Scratch": [25, 40],
-      "Major Scratch": [40, 75],
-      "Minor paint peel-off/Bubble": [75, 80],
-      "Major paint peel-off/Bubble": [80, 100]
+      "Minor Scratch": [25, 42],
+      "Major Scratch": [42, 60],
+      "Minor paint peel-off/Bubble": [60, 79],
+      "Major paint peel-off/Bubble": [79, 100]
     },
     "left": {
-      "No Scratches": [0, 20],
-      "Normal sign of usage": [20, 30],
-      "Minor Scratch": [30, 60],
-      "Major Scratch": [60, 75],
-      "Minor paint peel-off/Bubble": [75, 80],
-      "Major paint peel-off/Bubble": [80, 100]
+      "No Scratches": [0, 10],
+      "Normal sign of usage": [10, 25],
+      "Minor Scratch": [25, 48],
+      "Major Scratch": [48, 63],
+      "Minor paint peel-off/Bubble": [63, 75],
+      "Major paint peel-off/Bubble": [75, 100]
     },
     "right": {
-      "No Scratches": [0, 20],
-      "Normal sign of usage": [20, 30],
-      "Minor Scratch": [30, 60],
-      "Major Scratch": [60, 75],
-      "Minor paint peel-off/Bubble": [75, 80],
-      "Major paint peel-off/Bubble": [80, 100]
+      "No Scratches": [0, 10],
+      "Normal sign of usage": [10, 25],
+      "Minor Scratch": [25, 45],
+      "Major Scratch": [45, 60],
+      "Minor paint peel-off/Bubble": [60, 75],
+      "Major paint peel-off/Bubble": [75, 100]
     },
     "top": {
       "No Scratches": [0, 10],
-      "Normal sign of usage": [10, 30],
-      "Minor Scratch": [30, 60],
-      "Major Scratch": [60, 75],
-      "Minor paint peel-off/Bubble": [75, 80],
-      "Major paint peel-off/Bubble": [80, 100]
+      "Normal sign of usage": [10, 28],
+      "Minor Scratch": [28, 48],
+      "Major Scratch": [48, 60],
+      "Minor paint peel-off/Bubble": [60, 75],
+      "Major paint peel-off/Bubble": [75, 100]
     },
     "bottom": {
       "No Scratches": [0, 10],
-      "Normal sign of usage": [10, 30],
-      "Minor Scratch": [30, 55],
-      "Major Scratch": [55, 77],
-      "Minor paint peel-off/Bubble": [77, 80],
-      "Major paint peel-off/Bubble": [80, 100]
+      "Normal sign of usage": [10, 28],
+      "Minor Scratch": [28, 45],
+      "Major Scratch": [45, 62],
+      "Minor paint peel-off/Bubble": [62, 77],
+      "Major paint peel-off/Bubble": [77, 100]
     }
   },
   "physicalConditionDent": {

@@ -143,7 +143,7 @@ class ReportGenerator:
         run_url = f"{self.base_url}/api/queries/{self.query_id}/results"
         headers = {"Authorization": f"Key {self.api_key}", "Content-Type": "application/json"}
         
-        run_response = requests.post(run_url, headers=headers, json={"parameters": params})
+        run_response = requests.post(run_url, headers=headers, json={"parameters": params, "max_age": 0})
         if run_response.status_code != 200:
             raise Exception(f"Failed to trigger query: {run_response.text}")
         
@@ -526,15 +526,20 @@ class ReportGenerator:
                             
                             score_col = f"new_{side}_score"
                             url_col = f"new_{side}_result_image_url"
-                            
+                            debug_col = f"{side}_debug_dict"
+
                             if score_col not in new_columns:
                                 new_columns[score_col] = {}
                             if url_col not in new_columns:
                                 new_columns[url_col] = {}
-                            
+                            if debug_col not in new_columns:
+                                new_columns[debug_col] = {}
+
                             for idx in matching_rows.index:
                                 new_columns[score_col][idx] = row['score']
                                 new_columns[url_col][idx] = row['result_image_url']
+                                if 'debug_dict' in row and pd.notna(row['debug_dict']):
+                                    new_columns[debug_col][idx] = row['debug_dict']
                             
                             if side not in side_match_counts:
                                 side_match_counts[side] = 0
@@ -602,15 +607,33 @@ class ReportGenerator:
             for side in sides_with_new_scores:
                 uuid_col = f"{side}_uuid"
                 if uuid_col in result_df.columns:
-                    # Remove rows where this UUID is missing or empty
+                    before = len(result_df)
                     result_df = result_df[result_df[uuid_col].notna()]
                     result_df = result_df[result_df[uuid_col].astype(str).str.strip() != '']
-            
+                    side_removed = before - len(result_df)
+                    if side_removed > 0:
+                        print(f"   ⚠️  [{side}] {side_removed} rows with missing/empty UUID")
+
             removed_count = initial_count - len(result_df)
             if removed_count > 0:
-                if removed_count > 0:
-                    print(f"⚠️  Removed {removed_count} rows with missing/empty UUIDs for eval sides")
-        
+                print(f"⚠️  Removed {removed_count} rows total with missing/empty UUIDs for eval sides")
+
+        # Filter: Remove rows where result_image_url is missing for any eval side
+        url_filter_initial = len(result_df)
+        for side in sides_with_eval_data:
+            url_col = f"new_{side}_result_image_url"
+            if url_col in result_df.columns:
+                before = len(result_df)
+                result_df = result_df[result_df[url_col].notna()]
+                result_df = result_df[result_df[url_col].astype(str).str.strip() != '']
+                side_removed = before - len(result_df)
+                if side_removed > 0:
+                    print(f"   ⚠️  [{side}] {side_removed} rows with missing result_image_url")
+
+        url_removed = url_filter_initial - len(result_df)
+        if url_removed > 0:
+            print(f"⚠️  Removed {url_removed} rows total with missing result_image_url for eval sides")
+
         return result_df
     
     def create_new_cscan_answer(self, df: pd.DataFrame) -> pd.DataFrame:

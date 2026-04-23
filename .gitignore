@@ -47,6 +47,8 @@ failing_cases/
 severityTraining/
 Raw Data/
 plot_bkpcs/
+docs/
+.claude/settings.json
 
 # Generated files
 *.log

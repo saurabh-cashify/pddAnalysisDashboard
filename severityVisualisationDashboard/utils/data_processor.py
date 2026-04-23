@@ -132,6 +132,7 @@ _HEADER_FONT = Font(color="FFFFFF", bold=True)
 _LINK_FONT   = Font(color="0563C1", underline="single")
 _CENTER      = Alignment(horizontal="center", vertical="center")
 _VCENTER     = Alignment(vertical="center")
+_NEW_ROW_FILL = PatternFill(start_color="FEF9C3", end_color="FEF9C3", fill_type="solid")
 
 
 def generate_excel_report(df: pd.DataFrame) -> bytes:
@@ -203,6 +204,8 @@ def generate_excel_report(df: pd.DataFrame) -> bytes:
                 str(row.get("result_image_url", "")),
             ]
 
+        is_manual = bool(row.get("_is_new", False))
+
         for col_idx, val in enumerate(values, 1):
             cell = ws.cell(row=r, column=col_idx, value=val)
             cell.alignment = _VCENTER
@@ -212,6 +215,8 @@ def generate_excel_report(df: pd.DataFrame) -> bytes:
             elif col_idx in url_cols and val:
                 cell.hyperlink = val
                 cell.font = _LINK_FONT
+            elif is_manual:
+                cell.fill = _NEW_ROW_FILL
 
         ws.row_dimensions[r].height = 18
 
@@ -225,75 +230,92 @@ def generate_excel_report(df: pd.DataFrame) -> bytes:
 
 # ── Redash UUID fetch ─────────────────────────────────────────────────────────
 
-def fetch_uuids_from_redash(
-    df: pd.DataFrame,
+def _run_redash_query(
+    run_url: str,
+    headers: dict,
+    params: dict,
     redash_base_url: str,
     api_key: str,
-    query_id: str,
-) -> tuple[pd.DataFrame, int, int]:
-    """
-    Fetch image UUIDs from Redash and add an `image_uuid` column to df.
-
-    Returns (enriched_df, redash_row_count, missing_uuid_count).
-    Rows with no UUID found are kept in the df (image_uuid stays None/NaN).
-    """
+) -> tuple[list, list]:
+    """Execute a single Redash parameterised query and return (data_rows, columns)."""
     import time
     import requests
-
-    pdd_txn_ids     = df["pdd_txn_id"].dropna().unique().tolist()
-    pdd_txn_ids_str = "'" + "','".join(str(x) for x in pdd_txn_ids) + "'"
-    params          = {"pdd_txn_ids": pdd_txn_ids_str}
-
-    run_url = f"{redash_base_url.rstrip('/')}/api/queries/{query_id}/results"
-    headers = {
-        "Authorization": f"Key {api_key}",
-        "Content-Type": "application/json",
-    }
 
     run_resp = requests.post(run_url, headers=headers, json={"parameters": params}, timeout=30)
     run_resp.raise_for_status()
     resp_json = run_resp.json()
 
-    # Resolve result — may be cached or need job polling
     if "query_result" in resp_json:
-        qr       = resp_json["query_result"]
-        data_rows = qr["data"]["rows"]
-        columns   = qr["data"]["columns"]
-    else:
-        job = resp_json.get("job")
-        if not job:
-            raise RuntimeError(f"Unexpected Redash response: {resp_json}")
+        qr = resp_json["query_result"]
+        return qr["data"]["rows"], qr["data"]["columns"]
 
-        job_id     = job["id"]
-        status_url = f"{redash_base_url.rstrip('/')}/api/jobs/{job_id}"
-        max_wait   = 120
-        waited     = 0
-        query_result_id = None
+    job = resp_json.get("job")
+    if not job:
+        raise RuntimeError(f"Unexpected Redash response: {resp_json}")
 
-        while waited < max_wait:
-            s     = requests.get(status_url, headers=headers, timeout=15).json()
-            state = s["job"]["status"]
-            if state == 3:      # success
-                query_result_id = s["job"]["query_result_id"]
-                break
-            elif state == 4:    # failed
-                raise RuntimeError(f"Redash job failed: {s}")
-            time.sleep(2)
-            waited += 2
+    job_id     = job["id"]
+    status_url = f"{redash_base_url.rstrip('/')}/api/jobs/{job_id}"
+    max_wait   = 120
+    waited     = 0
+    query_result_id = None
 
-        if query_result_id is None:
-            raise RuntimeError("Redash query timed out after 120 s")
+    while waited < max_wait:
+        s     = requests.get(status_url, headers=headers, timeout=15).json()
+        state = s["job"]["status"]
+        if state == 3:      # success
+            query_result_id = s["job"]["query_result_id"]
+            break
+        elif state == 4:    # failed
+            raise RuntimeError(f"Redash job failed: {s}")
+        time.sleep(2)
+        waited += 2
 
-        results_url = (
-            f"{redash_base_url.rstrip('/')}/api/query_results/"
-            f"{query_result_id}.json?api_key={api_key}"
+    if query_result_id is None:
+        raise RuntimeError("Redash query timed out after 120 s")
+
+    results_url = (
+        f"{redash_base_url.rstrip('/')}/api/query_results/"
+        f"{query_result_id}.json?api_key={api_key}"
+    )
+    results = requests.get(results_url, timeout=30).json()
+    qr      = results["query_result"]
+    return qr["data"]["rows"], qr["data"]["columns"]
+
+
+def fetch_uuids_from_redash(
+    df: pd.DataFrame,
+    redash_base_url: str,
+    api_key: str,
+    query_id: str,
+    batch_size: int = 500,
+) -> tuple[pd.DataFrame, int, int]:
+    """
+    Fetch image UUIDs from Redash and add an `image_uuid` column to df.
+
+    IDs are sent in batches of `batch_size` to avoid oversized query strings.
+    Returns (enriched_df, redash_row_count, missing_uuid_count).
+    Rows with no UUID found are kept in the df (image_uuid stays None/NaN).
+    """
+    pdd_txn_ids = df["pdd_txn_id"].dropna().unique().tolist()
+    run_url     = f"{redash_base_url.rstrip('/')}/api/queries/{query_id}/results"
+    headers     = {
+        "Authorization": f"Key {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    all_rows: list = []
+    columns: list  = []
+
+    for i in range(0, len(pdd_txn_ids), batch_size):
+        chunk           = pdd_txn_ids[i : i + batch_size]
+        chunk_str       = "'" + "','".join(str(x) for x in chunk) + "'"
+        params          = {"pdd_txn_ids": chunk_str}
+        batch_rows, columns = _run_redash_query(
+            run_url, headers, params, redash_base_url, api_key
         )
-        results  = requests.get(results_url, timeout=30).json()
-        qr       = results["query_result"]
-        data_rows = qr["data"]["rows"]
-        columns   = qr["data"]["columns"]
+        all_rows.extend(batch_rows)
 
-    redash_df    = pd.DataFrame(data_rows)
+    redash_df    = pd.DataFrame(all_rows)
     column_order = [c["name"] for c in columns]
     redash_df    = redash_df[[c for c in column_order if c in redash_df.columns]]
 

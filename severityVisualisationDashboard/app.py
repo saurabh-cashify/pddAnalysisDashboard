@@ -73,8 +73,10 @@ def _tabs():
 
 app.layout = dbc.Container(
     [
-        # Shared data store (JSON string, records-orient)
+        # Shared data stores
         dcc.Store(id="sev-data-store", data={}),
+        dcc.Store(id="sev-added-cards-store", data=[]),   # manually inserted cards
+        dcc.Store(id="sev-gap-store", data={}),           # active gap info for add-modal
         _header(),
         _tabs(),
 
